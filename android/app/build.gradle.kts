@@ -27,6 +27,8 @@ android {
                     "-DVCPKG_TARGET_ANDROID=ON",
                     "-DANDROID_STL=c++_shared",
                     "-DVCPKG_MANIFEST_INSTALL=ON",
+                    "-DOPTIONS_ENABLE_CCACHE=ON",
+                    "-DTOGGLE_PRE_COMPILED_HEADER=OFF",
                     "-DVCPKG_INSTALL_OPTIONS=--allow-unsupported"
                 )
             }

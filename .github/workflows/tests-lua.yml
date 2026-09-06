@@ -20,4 +20,7 @@ jobs:
         run: sudo apt-get install -y lua5.1 liblua5.1-0-dev
 
       - name: Check out code.
-        uses: actions/checkout@main
+        uses: actions/checkout@v4
+
+      - name: Test OTUI editor parsing and edit safety
+        run: lua5.1 tests/lua/dev_otui_test.lua

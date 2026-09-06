@@ -37,7 +37,7 @@ jobs:
     runs-on: windows-2022
 
     concurrency:
-      group: crystalotc-${{ github.workflow }}-${{ github.ref }}
+      group: nextgen-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
 
     steps:
@@ -77,21 +77,20 @@ jobs:
           "hash=$hash" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
       - name: Cache vcpkg artifacts
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: |
             ${{ github.workspace }}/.vcpkg-binary-cache
-            ${{ github.workspace }}/build/windows-release/vcpkg_installed
-            ${{ github.workspace }}/vcpkg/buildtrees
             ${{ github.workspace }}/vcpkg/downloads
-            ${{ github.workspace }}/vcpkg/packages
-          key: vcpkg-windows-release-v2-${{ steps.hash.outputs.hash }}
+          key: vcpkg-windows-x64-static-${{ hashFiles('vcpkg.json') }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
+            vcpkg-windows-x64-static-${{ hashFiles('vcpkg.json') }}-
+            vcpkg-windows-x64-static-
             vcpkg-windows-release-v2-
             vcpkg-windows-release-
 
       - name: Compiler cache (sccache)
-        uses: hendrikmuhs/ccache-action@main
+        uses: hendrikmuhs/ccache-action@v1.2.23
         with:
           max-size: "1G"
           variant: "sccache"
@@ -115,7 +114,10 @@ jobs:
 
       - name: Prepare persistent vcpkg binary cache
         shell: pwsh
-        run: New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\.vcpkg-binary-cache" | Out-Null
+        run: |
+          New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\.vcpkg-binary-cache" | Out-Null
+          "VCPKG_DEFAULT_BINARY_CACHE=$env:GITHUB_WORKSPACE/.vcpkg-binary-cache" >> $env:GITHUB_ENV
+          "VCPKG_BINARY_SOURCES=clear;files,$env:GITHUB_WORKSPACE/.vcpkg-binary-cache,readwrite" >> $env:GITHUB_ENV
 
       - name: Configure and Build
         id: compile
@@ -128,11 +130,20 @@ jobs:
           cmake --build --preset windows-release *>&1 | Tee-Object -FilePath $log -Append
           exit $LASTEXITCODE
 
+      - name: Save completed vcpkg work
+        if: ${{ always() && steps.compile.outcome != 'skipped' }}
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.vcpkg-binary-cache
+            ${{ github.workspace }}/vcpkg/downloads
+          key: vcpkg-windows-x64-static-${{ hashFiles('vcpkg.json') }}-${{ github.run_id }}-${{ github.run_attempt }}
+
       - name: Upload build diagnostics
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
-          name: CrystalOTC-windows-build-log
+          name: NextGen-OTC-windows-build-log
           path: |
             ${{ github.workspace }}/windows-build.log
             ${{ github.workspace }}/build/windows-release/vcpkg-manifest-install.log
@@ -154,7 +165,7 @@ jobs:
               Write-Output "::error title=Windows build log part $part::$text"
             }
           }
-          Write-Error "Windows build failed. See the annotations or download CrystalOTC-windows-build-log."
+          Write-Error "Windows build failed. See the annotations or download NextGen-OTC-windows-build-log."
           exit 1
 
       - name: Prepare artifact folder
@@ -181,7 +192,7 @@ jobs:
             exit 1
           }
 
-          Copy-Item $exePath.FullName -Destination "$artifactDir\CrystalOTC.exe"
+          Copy-Item $exePath.FullName -Destination "$artifactDir\NextGen-OTC.exe"
 
           $dlls = Get-ChildItem -Path $exePath.Directory.FullName -Filter "*.dll"
           foreach ($dll in $dlls) {
@@ -200,7 +211,7 @@ jobs:
       - name: Upload executable artifact
         uses: actions/upload-artifact@v4
         with:
-          name: CrystalOTC-windows-release
+          name: NextGen-OTC-windows-release
           path: ${{ github.workspace }}/artifacts
 
   release:
@@ -215,18 +226,18 @@ jobs:
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
-          name: CrystalOTC-windows-release
+          name: NextGen-OTC-windows-release
           path: artifacts
 
       - name: Zip binaries
-        run: cd artifacts && zip -r ../CrystalOTC-windows.zip .
+        run: cd artifacts && zip -r ../NextGen-OTC-windows.zip .
 
       - name: Recreate "latest" release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete latest -R "$GITHUB_REPOSITORY" --cleanup-tag --yes || true
-          gh release create latest CrystalOTC-windows.zip \
+          gh release create latest NextGen-OTC-windows.zip \
             -R "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --prerelease \

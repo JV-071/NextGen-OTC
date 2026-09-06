@@ -224,6 +224,7 @@ tags
 *.pic
 config.otml
 *.patch
+!browser/overlay-ports/**/*.patch
 
 ## Cmake cache
 CMakeLists.txt.user

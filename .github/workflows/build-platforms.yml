@@ -1,0 +1,174 @@
+name: Build - Linux macOS Browser
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['src/**', 'cmake/**', 'browser/**', 'modules/**', 'mods/**', 'data/**', 'init.lua', 'otclientrc.lua', 'CMakeLists.txt', 'CMakePresets.json', 'vcpkg.json', '.github/workflows/build-platforms.yml']
+  pull_request:
+    paths: ['src/**', 'cmake/**', 'browser/**', 'modules/**', 'mods/**', 'data/**', 'init.lua', 'otclientrc.lua', 'CMakeLists.txt', 'CMakePresets.json', 'vcpkg.json', '.github/workflows/build-platforms.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nextgen-platforms-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux
+            os: ubuntu-24.04
+            triplet: x64-linux
+          - platform: macos
+            os: macos-15
+            triplet: arm64-osx
+          - platform: browser
+            os: ubuntu-24.04
+            triplet: wasm32-emscripten-pthread
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 180
+    defaults:
+      run:
+        shell: bash
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.cache/ccache
+      CCACHE_MAXSIZE: 2G
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      CMAKE_BUILD_PARALLEL_LEVEL: 2
+      VCPKG_MAX_CONCURRENCY: 2
+      EMSDK_VERSION: 6.0.9
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Linux tools
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends autoconf autoconf-archive automake \
+            build-essential ccache curl git libtool ninja-build pkg-config unzip zip \
+            gcc-14 g++-14 libasound2-dev libgl1-mesa-dev libglew-dev libglu1-mesa-dev \
+            libx11-dev libxext-dev
+          echo 'CC=gcc-14' >> "$GITHUB_ENV"
+          echo 'CXX=g++-14' >> "$GITHUB_ENV"
+      - name: Install macOS tools and XQuartz
+        if: runner.os == 'macOS'
+        run: |
+          brew install ccache ninja autoconf automake libtool pkgconf
+          brew install --cask xquartz
+          echo 'CMAKE_PREFIX_PATH=/opt/X11' >> "$GITHUB_ENV"
+          echo 'PKG_CONFIG_PATH=/opt/X11/lib/pkgconfig' >> "$GITHUB_ENV"
+      - name: Read dependency baseline
+        id: baseline
+        run: |
+          baseline=$(python3 -c 'import json; print(json.load(open("vcpkg.json"))["builtin-baseline"])')
+          [[ "$baseline" =~ ^[0-9a-f]{40}$ ]]
+          echo "commit=$baseline" >> "$GITHUB_OUTPUT"
+          mkdir -p .cache/vcpkg "$CCACHE_DIR"
+      - name: Restore compiled dependencies
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .cache/vcpkg
+            vcpkg/downloads
+          key: deps-${{ matrix.os }}-${{ matrix.triplet }}-${{ hashFiles('vcpkg.json', 'browser/overlay-ports/**', 'browser/triplets/**') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            deps-${{ matrix.os }}-${{ matrix.triplet }}-${{ hashFiles('vcpkg.json', 'browser/overlay-ports/**', 'browser/triplets/**') }}-
+            deps-${{ matrix.os }}-${{ matrix.triplet }}-
+      - name: Restore compiler cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .cache/ccache
+          key: compiler-${{ matrix.os }}-${{ matrix.triplet }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: compiler-${{ matrix.os }}-${{ matrix.triplet }}-
+      - name: Install pinned vcpkg
+        uses: lukka/run-vcpkg@b1a0dd252f06b9e25b3c022a9a03bd7a427fb6a2
+        with:
+          vcpkgGitCommitId: ${{ steps.baseline.outputs.commit }}
+          vcpkgJsonGlob: vcpkg.json
+      - name: Select persisted binary cache
+        run: |
+          echo "VCPKG_DEFAULT_BINARY_CACHE=$GITHUB_WORKSPACE/.cache/vcpkg" >> "$GITHUB_ENV"
+          echo "VCPKG_BINARY_SOURCES=clear;files,$GITHUB_WORKSPACE/.cache/vcpkg,readwrite" >> "$GITHUB_ENV"
+      - name: Cache Emscripten toolchain
+        if: matrix.platform == 'browser'
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/emsdk
+          key: emsdk-${{ runner.os }}-${{ runner.arch }}-${{ env.EMSDK_VERSION }}
+      - name: Install Emscripten
+        if: matrix.platform == 'browser'
+        run: |
+          if [ ! -d "$RUNNER_TEMP/emsdk/.git" ]; then
+            git clone --depth 1 --branch "$EMSDK_VERSION" https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
+          fi
+          "$RUNNER_TEMP/emsdk/emsdk" install "$EMSDK_VERSION"
+          "$RUNNER_TEMP/emsdk/emsdk" activate "$EMSDK_VERSION"
+      - name: Configure and compile
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          TRIPLET: ${{ matrix.triplet }}
+        run: |
+          args=(-DCMAKE_BUILD_TYPE=Release -DTOGGLE_BIN_FOLDER=ON -DBUILD_STATIC_LIBRARY=ON
+            -DOPTIONS_ENABLE_CCACHE=ON -DOPTIONS_ENABLE_SCCACHE=OFF -DOPTIONS_ENABLE_IPO=OFF
+            -DOTCLIENT_BUILD_TESTS=OFF -DTOGGLE_PRE_COMPILED_HEADER=OFF -DVCPKG_TARGET_TRIPLET="$TRIPLET"
+            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake")
+          if [ "$PLATFORM" = browser ]; then
+            source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
+            args+=(-DWASM=ON -DWASM_USE_WASM_EXCEPTIONS=OFF
+              -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE="$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+              -DVCPKG_OVERLAY_TRIPLETS="$GITHUB_WORKSPACE/browser/triplets"
+              -DVCPKG_OVERLAY_PORTS="$GITHUB_WORKSPACE/browser/overlay-ports")
+          fi
+          cmake -G Ninja -S . -B build/platform "${args[@]}"
+          cmake --build build/platform --target otclient --parallel 2
+      - name: Save dependency cache, including completed packages from failed builds
+        if: ${{ always() && steps.baseline.outcome == 'success' }}
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .cache/vcpkg
+            vcpkg/downloads
+          key: deps-${{ matrix.os }}-${{ matrix.triplet }}-${{ hashFiles('vcpkg.json', 'browser/overlay-ports/**', 'browser/triplets/**') }}-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Save compiler cache
+        if: ${{ always() && steps.baseline.outcome == 'success' }}
+        uses: actions/cache/save@v4
+        with:
+          path: .cache/ccache
+          key: compiler-${{ matrix.os }}-${{ matrix.triplet }}-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Report cache statistics
+        if: always()
+        run: ccache --show-stats
+      - name: Package client and runtime files
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          mkdir -p artifacts/NextGen-OTC
+          if [ "$PLATFORM" = browser ]; then
+            test -n "$(find build/platform/bin -name '*.wasm' -print -quit)"
+            cp -a build/platform/bin/. artifacts/NextGen-OTC/
+          else
+            test -x build/platform/bin/otclient
+            install -m 755 build/platform/bin/otclient artifacts/NextGen-OTC/NextGen-OTC
+            cp -a init.lua otclientrc.lua cacert.pem data modules mods artifacts/NextGen-OTC/
+          fi
+          cp docs/platform-builds.md artifacts/NextGen-OTC/BUILD-NOTES.md
+          tar -C artifacts -czf "NextGen-OTC-$PLATFORM.tar.gz" NextGen-OTC
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: NextGen-OTC-${{ matrix.platform }}-release
+          path: NextGen-OTC-${{ matrix.platform }}.tar.gz
+          if-no-files-found: error
+      - name: Upload dependency diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnostics-${{ matrix.platform }}
+          path: |
+            build/platform/vcpkg-manifest-install.log
+            vcpkg/buildtrees/**/*.log
+          if-no-files-found: ignore

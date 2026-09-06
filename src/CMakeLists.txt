@@ -1216,13 +1216,13 @@ elseif(WASM)
 
     -sALLOW_MEMORY_GROWTH=1
 
-    --preload-file=../otclientrc.lua@otclientrc.lua
-    --preload-file=../init.lua@init.lua
-    --preload-file=../data@data
-    --preload-file=../mods@mods
-    --preload-file=../modules@modules
+    "--preload-file=${CMAKE_SOURCE_DIR}/otclientrc.lua@otclientrc.lua"
+    "--preload-file=${CMAKE_SOURCE_DIR}/init.lua@init.lua"
+    "--preload-file=${CMAKE_SOURCE_DIR}/data@data"
+    "--preload-file=${CMAKE_SOURCE_DIR}/mods@mods"
+    "--preload-file=${CMAKE_SOURCE_DIR}/modules@modules"
 
-    --shell-file=../browser/shell.html
+    "--shell-file=${CMAKE_SOURCE_DIR}/browser/shell.html"
 
     --use-preload-cache
   )

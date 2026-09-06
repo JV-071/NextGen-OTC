@@ -119,14 +119,16 @@ jobs:
           "commit=$commit" >> $env:GITHUB_OUTPUT
 
       - name: Cache dependencies
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: |
             ${{ github.workspace }}/.vcpkg-binary-cache
-            ${{ github.workspace }}/build/windows-server/vcpkg_installed
             ${{ github.workspace }}/vcpkg/downloads
-            ${{ github.workspace }}/vcpkg/packages
-          key: windows-server-vcpkg-${{ hashFiles('vcpkg.json') }}
+          key: vcpkg-windows-x64-static-${{ hashFiles('vcpkg.json') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            vcpkg-windows-x64-static-${{ hashFiles('vcpkg.json') }}-
+            vcpkg-windows-x64-static-
+            windows-server-vcpkg-
 
       - name: Install vcpkg
         uses: lukka/run-vcpkg@a400452f634fe49e9f18d388aeb1809dcc642136
@@ -139,6 +141,20 @@ jobs:
       - name: Set up MSVC
         uses: ilammy/msvc-dev-cmd@v1
 
+      - name: Compiler cache
+        uses: hendrikmuhs/ccache-action@v1.2.23
+        with:
+          variant: sccache
+          max-size: 1G
+          key: nextgen-windows-server
+
+      - name: Select persisted binary cache
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE/.vcpkg-binary-cache" | Out-Null
+          "VCPKG_DEFAULT_BINARY_CACHE=$env:GITHUB_WORKSPACE/.vcpkg-binary-cache" >> $env:GITHUB_ENV
+          "VCPKG_BINARY_SOURCES=clear;files,$env:GITHUB_WORKSPACE/.vcpkg-binary-cache,readwrite" >> $env:GITHUB_ENV
+
       - name: Configure OpenGL client for Windows Server
         shell: pwsh
         run: |
@@ -148,7 +164,8 @@ jobs:
             -DVCPKG_TARGET_TRIPLET=x64-windows-static `
             -DOTCLIENT_WINDOWS_TARGET=0x0A00 `
             -DBUILD_STATIC_LIBRARY=ON `
-            -DBUILD_TESTING=OFF
+            -DOPTIONS_ENABLE_SCCACHE=ON `
+            -DOTCLIENT_BUILD_TESTS=OFF
 
       - name: Build client
         shell: pwsh
@@ -166,6 +183,15 @@ jobs:
           }
 
           cmake --build build/windows-server --target otclient
+
+      - name: Save completed vcpkg work
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.vcpkg-binary-cache
+            ${{ github.workspace }}/vcpkg/downloads
+          key: vcpkg-windows-x64-static-${{ hashFiles('vcpkg.json') }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Prepare runnable package
         shell: pwsh

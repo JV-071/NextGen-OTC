@@ -16,7 +16,8 @@ RUN git clone https://github.com/microsoft/vcpkg.git \
 ENV VCPKG_ROOT=/opt/vcpkg
 ENV ANDROID_HOME=/opt/android-sdk
 ENV ANDROID_NDK_HOME=/opt/android-sdk/ndk/29.0.13599879
-ENV VCPKG_FORCE_SYSTEM_BINARIES=1
+# Let vcpkg acquire its supported CMake version. Gradle's CMake 3.22.1
+# cannot interpret the JSON metadata commands used by modern vcpkg ports.
 
 # Install NDK and stable CMake via sdkmanager
 RUN yes | sdkmanager --sdk_root=$ANDROID_HOME "ndk;29.0.13599879" "cmake;3.22.1"

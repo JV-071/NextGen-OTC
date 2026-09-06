@@ -399,6 +399,25 @@ bool ResourceManager::writeFileContents(const std::string& fileName, const std::
     return writeFileBuffer(fileName, (const uint8_t*)data.c_str(), data.size());
 }
 
+bool ResourceManager::writeFileContentsToWorkDir(const std::string& fileName, const std::string& data)
+{
+    // The editor resolves virtual module paths before calling this function.
+    // Restore the settings directory after the write, including on exceptions.
+    const auto oldWriteDir = getWriteDir();
+    if (getWorkDir().empty() || !setWriteDir(getWorkDir()))
+        return false;
+
+    bool ok;
+    try {
+        ok = writeFileBuffer(fileName, reinterpret_cast<const uint8_t*>(data.data()), data.size(), true);
+    } catch (...) {
+        setWriteDir(oldWriteDir);
+        throw;
+    }
+    setWriteDir(oldWriteDir);
+    return ok;
+}
+
 FileStreamPtr ResourceManager::openFile(const std::string& fileName)
 {
     const std::string fullPath = resolvePath(fileName);

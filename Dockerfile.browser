@@ -6,7 +6,6 @@
 FROM ubuntu:24.04 AS builder
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -y
-RUN apt-get -y full-upgrade
 
 RUN apt-get install -y --no-install-recommends \
     build-essential \
@@ -26,9 +25,10 @@ RUN apt-get install -y --no-install-recommends \
 SHELL ["/bin/bash", "-lc"]
 
 WORKDIR /opt
-RUN git clone --filter=blob:none --single-branch --depth 1 https://github.com/emscripten-core/emsdk.git emsdk \
- && /opt/emsdk/emsdk install latest \
- && /opt/emsdk/emsdk activate latest
+ARG EMSDK_VERSION=6.0.9
+RUN git clone --single-branch --depth 1 --branch ${EMSDK_VERSION} https://github.com/emscripten-core/emsdk.git emsdk \
+ && /opt/emsdk/emsdk install ${EMSDK_VERSION} \
+ && /opt/emsdk/emsdk activate ${EMSDK_VERSION}
 
 ENV VCPKG_ROOT=/opt/vcpkg
 COPY vcpkg.json /tmp/vcpkg.json
@@ -44,10 +44,9 @@ COPY . /workspace
 ARG BUILD_TYPE=Release
 ENV BUILD_DIR=/workspace/build-emscripten
 RUN mkdir -p ${BUILD_DIR}
-# Force complete rebuild by clearing all vcpkg and emscripten caches
+# Preserve toolchain caches. CI additionally persists dependency binaries and
+# compiler objects between source changes in build-platforms.yml.
 RUN source /opt/emsdk/emsdk_env.sh \
- && rm -rf ${VCPKG_ROOT}/buildtrees ${VCPKG_ROOT}/packages ${BUILD_DIR}/vcpkg_installed \
- && rm -rf /opt/emsdk/upstream/emscripten/cache \
  && cmake -G Ninja -S /workspace -B ${BUILD_DIR} \
     -DWASM=ON \
     -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=/opt/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake \
@@ -58,6 +57,7 @@ RUN source /opt/emsdk/emsdk_env.sh \
     -DVCPKG_BUILD_TYPE=${BUILD_TYPE} \
     -DWASM_USE_WASM_EXCEPTIONS=OFF \
     -DOPTIONS_ENABLE_IPO=OFF \
+    -DOTCLIENT_BUILD_TESTS=OFF \
     -DTOGGLE_BIN_FOLDER=ON \
     -DTOGGLE_BOT_PROTECTION=OFF \
     -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
