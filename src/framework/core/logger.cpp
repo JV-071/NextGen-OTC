@@ -100,6 +100,11 @@ void Logger::log(Fw::LogLevel level, const std::string_view message)
 
 void Logger::logFunc(Fw::LogLevel level, const std::string_view message, const std::string_view prettyFunction)
 {
+    // Filter before dispatching or capturing a stack: disabled per-packet traces
+    // must not do expensive symbol lookup (or enqueue work) in release builds.
+    if (!isLevelEnabled(level))
+        return;
+
     if (g_eventThreadId > -1 && g_eventThreadId != stdext::getThreadId()) {
         g_dispatcher.addEvent([this, level, msg = std::string{ message }, prettyFunction = std::string{ prettyFunction }] {
             logFunc(level, msg, prettyFunction);

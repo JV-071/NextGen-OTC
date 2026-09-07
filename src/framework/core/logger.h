@@ -45,6 +45,14 @@ class Logger
     using OnLogCallback = std::function<void(Fw::LogLevel, std::string_view, int64_t)>;
 
 public:
+    bool isLevelEnabled(Fw::LogLevel level) const {
+#ifdef NDEBUG
+        if (level == Fw::LogDebug || level == Fw::LogFine)
+            return false;
+#endif
+        return level >= m_level;
+    }
+
     void log(Fw::LogLevel level, std::string_view message);
     void logFunc(Fw::LogLevel level, std::string_view message, std::string_view prettyFunction);
 
@@ -93,6 +101,8 @@ public:
 
     template<typename... Args>
     inline void traceDebug(fmt::format_string<Args...> fmtStr, Args&&... args) {
+        if (!isLevelEnabled(Fw::LogDebug))
+            return;
         logFunc(Fw::LogDebug, fmt::format(fmtStr, std::forward<Args>(args)...), __PRETTY_FUNCTION__);
     }
 

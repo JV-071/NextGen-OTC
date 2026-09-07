@@ -44,6 +44,9 @@ void ProtocolGame::login(const std::string_view accountName, const std::string_v
 
 void ProtocolGame::onConnect()
 {
+    g_logger.info("[login] transport connected; client={}, protocol={}, awaitingChallenge={}",
+                  g_game.getClientVersion(), g_game.getProtocolVersion(),
+                  g_game.getFeature(Otc::GameChallengeOnLogin));
     m_firstRecv = true;
     Protocol::onConnect();
 
@@ -68,6 +71,7 @@ void ProtocolGame::onRecv(const InputMessagePtr& inputMessage)
 
     if (m_firstRecv) {
         m_firstRecv = false;
+        g_logger.info("[login] first world packet received ({} bytes)", inputMessage->getMessageSize());
 
         if (g_game.getClientVersion() >= 1405) {
             const int padding = inputMessage->getU8();
@@ -90,6 +94,8 @@ void ProtocolGame::onRecv(const InputMessagePtr& inputMessage)
 
 void ProtocolGame::onError(const std::error_code& error)
 {
+    g_logger.warning("[connection] code={} category={} message={} online={} receivedPackets={}",
+                     error.value(), error.category().name(), error.message(), g_game.isOnline(), m_recivedPackeds);
     g_game.processConnectionError(error);
     disconnect();
 }

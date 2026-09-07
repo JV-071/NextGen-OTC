@@ -102,8 +102,9 @@ void Game::processConnectionError(const std::error_code& ec)
 {
     // connection errors only have meaning if we still have a protocol
     if (m_protocolGame) {
-        // eof = end of file, a clean disconnect
-        if (ec != asio::error::eof)
+        // EOF is a normal logout only after entering the world. During login it
+        // must reach the UI too, otherwise the connecting modal never closes.
+        if (ec != asio::error::eof || !isOnline())
             g_lua.callGlobalField("g_game", "onConnectionError", ec.message(), ec.value());
 
         processDisconnect();
@@ -123,11 +124,13 @@ void Game::processDisconnect()
 
 void Game::processUpdateNeeded(const std::string_view signature)
 {
+    g_logger.warning("[login] server requested an asset/client update");
     g_lua.callGlobalField("g_game", "onUpdateNeeded", signature);
 }
 
 void Game::processLoginError(const std::string_view error)
 {
+    g_logger.warning("[login] server rejected login: {}", error);
     g_lua.callGlobalField("g_game", "onLoginError", error);
 }
 
@@ -157,6 +160,7 @@ void Game::processLogin()
 
 void Game::processPendingGame()
 {
+    g_logger.info("[login] pending game received; requesting world entry");
     m_localPlayer->setPendingGame(true);
     g_lua.callGlobalField("g_game", "onPendingGame");
     m_protocolGame->sendEnterGame();
@@ -164,6 +168,7 @@ void Game::processPendingGame()
 
 void Game::processEnterGame()
 {
+    g_logger.info("[login] enter-game acknowledgement received");
     g_dispatcher.addEvent([localPlayer = m_localPlayer] {
         localPlayer->setPendingGame(false);
     });
@@ -172,6 +177,7 @@ void Game::processEnterGame()
 
 void Game::processGameStart()
 {
+    g_logger.info("[login] game start: initializing session and module callbacks");
     m_online = true;
     g_app.resetTargetFps();
 
@@ -196,6 +202,7 @@ void Game::processGameStart()
     }, 1000);
 
     g_lua.callGlobalField("g_game", "onGameStart");
+    g_logger.info("[login] game-start callbacks completed");
 }
 
 void Game::processGameEnd()

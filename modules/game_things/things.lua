@@ -81,6 +81,7 @@ end
 local function load(version)
 	local errorList = {}
 	local THINGS_ASSETS_PATH = getThingsAssetsPath(version)
+	g_logger.info(string.format("[assets] client=%d directory=%s", version, THINGS_ASSETS_PATH))
 
 	if version >= 1281 and not g_game.getFeature(GameLoadSprInsteadProtobuf) then
 		local filePath = resolvepath(THINGS_ASSETS_PATH)
@@ -137,6 +138,7 @@ local function load(version)
 	end
 
 	loaded = #errorList == 0
+	g_logger.info(string.format("[assets] load completed: success=%s", tostring(loaded)))
 
 	if loaded then
 		local versionedSoundsPath = "/sounds/" .. version .. "/"

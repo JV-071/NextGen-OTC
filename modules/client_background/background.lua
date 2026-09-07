@@ -39,6 +39,8 @@ local function finishMapTransition(timedOut)
 	end
 
 	background:hide()
+	g_logger.info(string.format("[login] map transition finished: timeout=%s elapsed=%d ms",
+		tostring(timedOut), g_clock.realMillis() - mapTransitionStartedAt))
 
 	if CharacterList and CharacterList.destroyLoadBox then
 		CharacterList.destroyLoadBox()
@@ -79,6 +81,7 @@ local function pollMapReady()
 end
 
 local function beginMapTransition()
+	g_logger.info("[login] waiting for the first rendered map frames")
 	cancelMapReadyEvent()
 
 	mapTransitionStartedAt = g_clock.realMillis()

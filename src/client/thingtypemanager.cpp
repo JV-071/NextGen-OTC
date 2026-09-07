@@ -182,6 +182,15 @@ bool ThingTypeManager::loadAppearances(const std::string& file)
     try {
         try {
             m_assetIdentifier = g_resources.readFileContents(g_resources.resolvePath(g_resources.guessFilePath(file + "assets", "json.sha256")));
+            const bool validHash = m_assetIdentifier.size() == 64 &&
+                std::ranges::all_of(m_assetIdentifier, [](const char c) {
+                    return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+                });
+            if (validHash)
+                g_logger.info("[assets] directory={} identifier={}", file, m_assetIdentifier);
+            else
+                g_logger.warning("[assets] identifier has unexpected format ({} bytes); check assets.json.sha256 against the server's asset set",
+                                 m_assetIdentifier.size());
         } catch (const std::exception& e) {
             m_assetIdentifier = "appearancesHash";
             g_logger.warning("Cannot load asset hash identifier from assets.json.sha256: {}", e.what());

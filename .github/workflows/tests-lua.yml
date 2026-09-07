@@ -24,3 +24,6 @@ jobs:
 
       - name: Test OTUI editor parsing and edit safety
         run: lua5.1 tests/lua/dev_otui_test.lua
+
+      - name: Test login loading-screen lifecycle
+        run: lua5.1 tests/lua/login_transition_test.lua

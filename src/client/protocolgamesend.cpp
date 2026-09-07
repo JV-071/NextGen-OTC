@@ -45,6 +45,8 @@ void ProtocolGame::sendExtendedOpcode(const uint8_t opcode, const std::string& b
 
 void ProtocolGame::sendLoginPacket(const uint32_t challengeTimestamp, const uint8_t challengeRandom)
 {
+    // No account, character, session key, challenge or packet contents in logs.
+    g_logger.info("[login] preparing login packet; assetIdentifierBytes={}", g_things.getAssetIdentifier().size());
     const auto& msg = std::make_shared<OutputMessage>();
 
     msg->addU8(Proto::ClientPendingGame);
@@ -127,6 +129,7 @@ void ProtocolGame::sendLoginPacket(const uint32_t challengeTimestamp, const uint
 
     if (g_game.getFeature(Otc::GameSequencedPackets))
         enabledSequencedPackets();
+    g_logger.info("[login] login packet submitted; waiting for server response");
 }
 
 void ProtocolGame::sendEnterGame()
