@@ -41,6 +41,9 @@ compilação não comprova execução em Android/Linux nem entrada no jogo.
 
 macOS falhou no link de `SecCertificateCopyData` e
 `SecTrustSettingsCopyCertificates`; 5b25920 adiciona o framework Security.
+Na execução 34152142504, macOS e Linux passaram com 5b25920 e publicaram
+artefatos (917572645 e 918599793 bytes, respectivamente); execução gráfica e
+login nessas plataformas ainda não foram validados.
 Browser ainda referencia `browser/include/lua51/liblua.a`, que não existe.
 Faltam a integração de compilação e a compatibilidade do interpretador com os
 módulos que usam `goto`; não basta criar um arquivo vazio nem usar Lua 5.1 padrão.
@@ -85,7 +88,8 @@ caminho. Mesa pode fornecer OpenGL sobre D3D12, mas isso depende do driver:
 https://docs.mesa3d.org/drivers/d3d12.html
 
 `TOGGLE_DIRECTX` procura bibliotecas do SDK antigo; não implementa por si só
-DirectX 9. Suporte DX9 real permanece pendente: precisa de um backend ou ponte
+DirectX 9. O caminho EGL de Windows pede contexto OpenGL ES 3, não ES 2.
+Suporte DX9 real permanece pendente: precisa de um backend ou ponte
 gráfica e testes de shaders, atlas, minimapa/HD e desempenho. Não anunciamos
 compatibilidade apenas habilitando a opção de compilação. Referência possível:
 https://chromium.googlesource.com/angle/angle/+/main

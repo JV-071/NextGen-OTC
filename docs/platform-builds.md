@@ -7,11 +7,12 @@ runtime modules; they do not substitute executables from another fork.
 
 | Target | Output | Runtime requirement / validation still needed |
 | --- | --- | --- |
-| Windows / Windows Server | Existing Windows workflows | Test the new editor with a rebuilt executable |
+| Windows | `NextGen-OTC-windows-release` (binary + symbols) | Install over matching NextGen runtime files; optional `include_runtime` manual input uploads those separately |
+| Windows Server | Existing full-package workflow | Modern Windows Server with GUI and a suitable OpenGL driver; test the target machine/RDP session |
 | Linux x64 | `NextGen-OTC-linux-release` | Ubuntu 24.04-compatible environment; OpenGL, GLEW, X11 and audio system libraries |
 | macOS arm64 | `NextGen-OTC-macos-release` | XQuartz: NextGen currently uses X11/OpenGL, not CrystalOTC's Cocoa/Metal backend |
 | Android | `NextGen-OTC-android-release` | Four ABIs from Gradle; development-signed APK, not a store release |
-| Browser | `NextGen-OTC-browser-release` | HTTP server with COOP/COEP headers for SharedArrayBuffer; WebSocket-compatible game transport |
+| Browser (build currently blocked) | Intended: `NextGen-OTC-browser-release` | Lua WebAssembly library integration remains unresolved; subsequently requires COOP/COEP and WebSocket-compatible game transport |
 
 The workflow configuration is not proof of a working runtime. Confirm successful
 compilation and test startup, login, UI, sound and gameplay on each target.
@@ -28,7 +29,8 @@ be fixed by compiling an existing native client to WebAssembly.
 
 ## Caches
 
-The Linux/macOS/browser workflow saves vcpkg binary packages and downloads,
+Separate Linux/macOS/browser entry workflows call `build-platforms.yml`, which
+saves vcpkg binary packages and downloads,
 plus ccache compiler objects. Android saves these, Gradle dependencies/build
 cache, and the LuaJIT libraries for all four ABIs. Emscripten is pinned to 6.0.9
 and cached separately. Dependency/compiler saves run even after compilation
@@ -43,8 +45,9 @@ ordinary header: legacy source files depend on its declarations. Emscripten
 toolchain snapshots are also saved after a failed client compilation.
 
 Keys separate operating systems and target architectures. vcpkg additionally
-checks package ABI hashes; ccache checks source/compiler/options. Every run gets
-a new cache snapshot so an incomplete first build cannot freeze the cache.
+checks package ABI hashes; ccache checks source/compiler/options. Compiler caches
+get new snapshots; complete platform dependency caches use stable keys, while
+failed builds save partial snapshots for later reuse.
 GitHub cache eviction and compiler/dependency changes can cause another cold
 build. Cross-repository cache reuse is not configured; ordinary Actions caches
 belong to their repository. Windows objects cannot be linked into the other
