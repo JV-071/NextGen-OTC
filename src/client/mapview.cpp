@@ -724,6 +724,9 @@ void MapView::updateVisibleTiles()
         }
 
         tasks.wait();
+        // Do not merge partial tile results if a worker failed. Propagate the
+        // exception to the map loop's diagnostic boundary after all workers stop.
+        tasks.get();
 
         for (int fi = 0, s = m_floors.size(); fi < s; ++fi) {
             auto& floor = m_floors[fi];

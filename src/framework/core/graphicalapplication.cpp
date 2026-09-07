@@ -21,6 +21,7 @@
  */
 
 #include "graphicalapplication.h"
+#include <exception>
 #include <framework/graphics/glutil.h>
 
 #include "asyncdispatcher.h"
@@ -224,51 +225,70 @@ void GraphicalApplication::run()
         BS::multi_future<void> tasks;
 
         g_luaThreadId = g_eventThreadId = stdext::getThreadId();
-        while (!m_stopping) {
-            poll();
+        const char* phase = "event polling";
+        // submit_task stores exceptions in a future. Without this boundary the
+        // event loop can disappear while the window keeps showing its last frame.
+        try {
+            while (!m_stopping) {
+                phase = "event polling";
+                poll();
 
-            if (!g_window.isVisible()) {
-                stdext::millisleep(10);
-                continue;
-            }
-
-            const bool canDrawForeground = !g_drawPool.isDrawing(DrawPoolType::FOREGROUND) && m_drawEvents->canDraw(DrawPoolType::FOREGROUND);
-
-            if (canDrawMap()) {
-                if (canDrawForeground) {
-                    tasks.emplace_back(g_asyncDispatcher.submit_task([] {
-                        AUTO_STAT(STATS_RENDER, "DrawForegroundUI");
-                        g_ui.render(DrawPoolType::FOREGROUND);
-                    }));
+                if (!g_window.isVisible()) {
+                    stdext::millisleep(10);
+                    continue;
                 }
 
-                {
-                    AUTO_STAT(STATS_RENDER, "DrawPreload");
-                    m_drawEvents->preLoad();
-                }
-                static constexpr std::array<DrawPoolType, 2> types{ DrawPoolType::LIGHT, DrawPoolType::FOREGROUND_MAP };
-                for (const auto type : types) {
-                    if (m_drawEvents->canDraw(type)) {
-                        tasks.emplace_back(g_asyncDispatcher.submit_task([this, type] {
-                            AUTO_STAT(STATS_RENDER, type == DrawPoolType::LIGHT ? "DrawLight" : "DrawForegroundMap");
-                            m_drawEvents->draw(type);
+                const bool canDrawForeground = !g_drawPool.isDrawing(DrawPoolType::FOREGROUND) && m_drawEvents->canDraw(DrawPoolType::FOREGROUND);
+
+                if (canDrawMap()) {
+                    if (canDrawForeground) {
+                        tasks.emplace_back(g_asyncDispatcher.submit_task([] {
+                            AUTO_STAT(STATS_RENDER, "DrawForegroundUI");
+                            g_ui.render(DrawPoolType::FOREGROUND);
                         }));
                     }
+
+                    {
+                        phase = "map preload";
+                        AUTO_STAT(STATS_RENDER, "DrawPreload");
+                        m_drawEvents->preLoad();
+                    }
+                    static constexpr std::array<DrawPoolType, 2> types{ DrawPoolType::LIGHT, DrawPoolType::FOREGROUND_MAP };
+                    for (const auto type : types) {
+                        if (m_drawEvents->canDraw(type)) {
+                            tasks.emplace_back(g_asyncDispatcher.submit_task([this, type] {
+                                AUTO_STAT(STATS_RENDER, type == DrawPoolType::LIGHT ? "DrawLight" : "DrawForegroundMap");
+                                m_drawEvents->draw(type);
+                            }));
+                        }
+                    }
+
+                    {
+                        phase = "map drawing";
+                        AUTO_STAT(STATS_RENDER, "DrawMap");
+                        m_drawEvents->draw(DrawPoolType::MAP);
+                    }
+
+                    phase = "parallel drawing";
+                    tasks.wait();
+                    // wait() only synchronizes; get() also reports worker failures.
+                    tasks.get();
+                    tasks.clear();
+                } else if (canDrawForeground) {
+                    phase = "foreground UI drawing";
+                    AUTO_STAT(STATS_RENDER, "DrawForegroundUI");
+                    g_ui.render(DrawPoolType::FOREGROUND);
                 }
 
-                {
-                    AUTO_STAT(STATS_RENDER, "DrawMap");
-                    m_drawEvents->draw(DrawPoolType::MAP);
-                }
-
-                tasks.wait();
-                tasks.clear();
-            } else if (canDrawForeground) {
-                AUTO_STAT(STATS_RENDER, "DrawForegroundUI");
-                g_ui.render(DrawPoolType::FOREGROUND);
+                phase = "map frame pacing";
+                m_mapProcessFrameCounter.update();
             }
-
-            m_mapProcessFrameCounter.update();
+        } catch (const std::exception& error) {
+            // We are still on the event thread, so this is flushed directly to
+            // the log instead of being queued to the loop that just stopped.
+            g_logger.fatal("[render] Map/event loop failed during {}: {}", phase, error.what());
+        } catch (...) {
+            g_logger.fatal("[render] Map/event loop failed during {}: unknown exception", phase);
         }
     });
 

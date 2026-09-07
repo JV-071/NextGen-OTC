@@ -214,6 +214,19 @@ jobs:
           name: NextGen-OTC-windows-release
           path: ${{ github.workspace }}/artifacts
 
+      # Keep symbols separate: players do not need to download them, but the
+      # exact matching PDB is essential when inspecting a frozen release build.
+      - name: Upload Windows debug symbols
+        uses: actions/upload-artifact@v4
+        with:
+          name: NextGen-OTC-windows-symbols
+          path: |
+            ${{ github.workspace }}/otclient.pdb
+            ${{ github.workspace }}/build/windows-release/otclient.pdb
+            ${{ github.workspace }}/build/windows-release/bin/otclient.pdb
+          if-no-files-found: error
+          retention-days: 14
+
   release:
     name: Publish "latest" release
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}

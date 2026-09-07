@@ -64,6 +64,27 @@ speed improvement. If split later, prefer thin callers to a reusable workflow.
 
 ## Validation still required
 
+### Live Windows login inspection (2026-09-07)
+
+The downloaded client reached pending-game, enter-game acknowledgement and
+completed game-start callbacks with a 64-byte asset identifier. Its log then
+stopped, including the map transition timeout. Non-invasive CDB inspection of
+PID 12568 found the main thread pacing frames and all three pool workers waiting
+on an empty task queue. This strongly suggests the long-running map/event task
+had exited; the original exception is not recoverable from those stacks alone.
+The executable was distributed without its matching PDB, so exported-symbol
+names in those stacks must not be treated as real function names.
+
+The map/event loop now reports an uncaught exception and its processing phase
+through the existing fatal logger rather than leaving a silent frozen window.
+Parallel drawing and tile preparation retrieve their futures after waiting for
+all workers, so worker exceptions are not discarded. Windows PDBs are uploaded
+separately from the player download, with 14-day retention.
+
+This fixes missing diagnostics, not a confirmed underlying login/rendering
+error. A new build and reproduction are required to identify that error. No
+game assets or server configuration were changed during this inspection.
+
 Build fixes are candidates until new Actions results, artifacts and cache hits
 are checked. Browser Lua integration remains unresolved. A green compile is
 not evidence of successful login/rendering, Android device launch, or HD map
