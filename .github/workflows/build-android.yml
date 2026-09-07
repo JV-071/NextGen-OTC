@@ -38,6 +38,12 @@ jobs:
           sudo apt-get install -y --no-install-recommends autoconf autoconf-archive automake \
             build-essential ccache gcc-multilib g++-multilib libtool ninja-build \
             pkg-config nasm gperf bison flex zip unzip
+      - name: Set up Android SDK tools
+        # setup-android adds sdkmanager to PATH on runners where it is absent.
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
       - name: Read pinned toolchains
         id: baseline
         run: |

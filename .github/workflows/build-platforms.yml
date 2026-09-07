@@ -52,8 +52,10 @@ jobs:
             build-essential ccache curl git libtool ninja-build pkg-config unzip zip \
             gcc-14 g++-14 libasound2-dev libgl1-mesa-dev libglew-dev libglu1-mesa-dev \
             libx11-dev libxext-dev
-          echo 'CC=gcc-14' >> "$GITHUB_ENV"
-          echo 'CXX=g++-14' >> "$GITHUB_ENV"
+          if [ '${{ matrix.platform }}' = linux ]; then
+            echo 'CC=gcc-14' >> "$GITHUB_ENV"
+            echo 'CXX=g++-14' >> "$GITHUB_ENV"
+          fi
       - name: Install macOS tools and XQuartz
         if: runner.os == 'macOS'
         run: |
@@ -95,11 +97,13 @@ jobs:
           echo "VCPKG_BINARY_SOURCES=clear;files,$GITHUB_WORKSPACE/.cache/vcpkg,readwrite" >> "$GITHUB_ENV"
       - name: Cache Emscripten toolchain
         if: matrix.platform == 'browser'
-        uses: actions/cache@v4
+        id: emsdk-cache
+        uses: actions/cache/restore@v4
         with:
           path: ${{ runner.temp }}/emsdk
           key: emsdk-${{ runner.os }}-${{ runner.arch }}-${{ env.EMSDK_VERSION }}
       - name: Install Emscripten
+        id: emsdk-install
         if: matrix.platform == 'browser'
         run: |
           if [ ! -d "$RUNNER_TEMP/emsdk/.git" ]; then
@@ -117,6 +121,9 @@ jobs:
             -DOTCLIENT_BUILD_TESTS=OFF -DTOGGLE_PRE_COMPILED_HEADER=OFF -DVCPKG_TARGET_TRIPLET="$TRIPLET"
             -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake")
           if [ "$PLATFORM" = browser ]; then
+            # Non-CMake ports such as OpenSSL also read CC/CXX from the
+            # environment. Native GCC cannot accept wasm atomics flags.
+            unset CC CXX
             source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
             args+=(-DWASM=ON -DWASM_USE_WASM_EXCEPTIONS=OFF
               -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE="$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
@@ -125,6 +132,12 @@ jobs:
           fi
           cmake -G Ninja -S . -B build/platform "${args[@]}"
           cmake --build build/platform --target otclient --parallel 2
+      - name: Save Emscripten even when client compilation fails
+        if: ${{ always() && steps.emsdk-install.outcome == 'success' && steps.emsdk-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/emsdk
+          key: emsdk-${{ runner.os }}-${{ runner.arch }}-${{ env.EMSDK_VERSION }}
       - name: Save dependency cache, including completed packages from failed builds
         if: ${{ always() && steps.baseline.outcome == 'success' }}
         uses: actions/cache/save@v4

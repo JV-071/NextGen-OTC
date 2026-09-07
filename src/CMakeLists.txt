@@ -635,6 +635,18 @@ else()
 
   message(STATUS "Use precompiled header: OFF")
 
+  # Existing translation units rely on the common header. Turning off PCH
+  # disables precompilation, not these declarations. Keep the same include
+  # contract while allowing ccache to cache ordinary C++ compilations.
+  if(MSVC)
+    target_compile_options(otclient_core PRIVATE
+      "$<$<COMPILE_LANGUAGE:CXX>:/FI${CMAKE_CURRENT_SOURCE_DIR}/framework/pch.h>")
+  else()
+    target_compile_options(otclient_core PRIVATE
+      "$<$<COMPILE_LANGUAGE:CXX>:-include>"
+      "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/framework/pch.h>")
+  endif()
+
 endif()
 
 if(ANDROID)

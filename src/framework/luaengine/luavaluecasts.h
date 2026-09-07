@@ -125,19 +125,19 @@ inline bool luavalue_cast(const int index, unsigned long& v)
     return r;
 }
 
-template<typename T = lua_u64, std::enable_if_t<!std::is_same_v<T, unsigned long>, int> = 0>
-inline int push_luavalue(lua_u64 v)
+// unsigned long and unsigned long long are distinct C++ types even when both
+// are 64-bit (macOS). Cover both instead of selecting only by sizeof(long).
+inline int push_luavalue(const unsigned long long v)
 {
     push_luavalue(static_cast<double>(v));
     return 1;
 }
 
-template<typename T = lua_u64, std::enable_if_t<!std::is_same_v<T, unsigned long>, int> = 0>
-inline bool luavalue_cast(const int idx, lua_u64& v)
+inline bool luavalue_cast(const int idx, unsigned long long& v)
 {
     double d;
     const bool r = luavalue_cast(idx, d);
-    v = static_cast<lua_u64>(d);
+    v = static_cast<unsigned long long>(d);
     return r;
 }
 

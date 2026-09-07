@@ -38,6 +38,9 @@ These ccache builds disable precompiled headers, avoiding a PCH configuration
 that ccache cannot reuse without relaxed timestamp/macro checks. Windows uses
 sccache. Windows and Windows Server share compatible vcpkg binary archives;
 their compiler settings still determine which objects can be reused.
+When precompilation is disabled, CMake still includes the common `pch.h` as an
+ordinary header: legacy source files depend on its declarations. Emscripten
+toolchain snapshots are also saved after a failed client compilation.
 
 Keys separate operating systems and target architectures. vcpkg additionally
 checks package ABI hashes; ccache checks source/compiler/options. Every run gets
