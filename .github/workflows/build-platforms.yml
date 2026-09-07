@@ -1,4 +1,4 @@
-name: Build - Linux macOS Browser
+name: Reusable platform build
 
 on:
   workflow_dispatch:
@@ -8,11 +8,11 @@ on:
         type: choice
         default: all
         options: [all, linux, macos, browser]
-  push:
-    branches: [main]
-    paths: ['src/**', 'cmake/**', 'browser/**', 'modules/**', 'mods/**', 'data/**', 'init.lua', 'otclientrc.lua', 'CMakeLists.txt', 'CMakePresets.json', 'vcpkg.json', '.github/workflows/build-platforms.yml']
-  pull_request:
-    paths: ['src/**', 'cmake/**', 'browser/**', 'modules/**', 'mods/**', 'data/**', 'init.lua', 'otclientrc.lua', 'CMakeLists.txt', 'CMakePresets.json', 'vcpkg.json', '.github/workflows/build-platforms.yml']
+  workflow_call:
+    inputs:
+      platform:
+        type: string
+        required: true
 
 permissions:
   contents: read
@@ -164,7 +164,7 @@ jobs:
           else
             test -x build/platform/bin/otclient
             install -m 755 build/platform/bin/otclient artifacts/NextGen-OTC/NextGen-OTC
-            cp -a init.lua otclientrc.lua cacert.pem data modules mods artifacts/NextGen-OTC/
+            cp -a init.lua config.ini otclientrc.lua cacert.pem data modules mods artifacts/NextGen-OTC/
           fi
           cp docs/platform-builds.md artifacts/NextGen-OTC/BUILD-NOTES.md
           tar -C artifacts -czf "NextGen-OTC-$PLATFORM.tar.gz" NextGen-OTC
