@@ -49,3 +49,17 @@ TEST(BestiaryOverview, TruncatedAndInvalidEntriesUseProtocolExceptions)
     bytes(msg, {1,0, 1,255});
     EXPECT_THROW(bestiary::readOverviewEntry(msg, true, true), stdext::exception);
 }
+
+TEST(BestiaryOverview, SummerDetailsGateHiddenCreaturesAndConsumeExtraByte)
+{
+    InputMessage msg;
+    bytes(msg, {0xA0});
+    EXPECT_EQ(bestiary::readLootHeader(msg, 0, true), (std::pair<uint8_t, uint8_t>{0, 0}));
+    EXPECT_EQ(msg.getU8(), 0xA0);
+    bytes(msg, {3,0,2,0xA0});
+    EXPECT_EQ(bestiary::readLootHeader(msg, 1, true), (std::pair<uint8_t, uint8_t>{3, 2}));
+    EXPECT_EQ(msg.getU8(), 0xA0);
+    bytes(msg, {3,2,0xA0});
+    EXPECT_EQ(bestiary::readLootHeader(msg, 0, false), (std::pair<uint8_t, uint8_t>{3, 2}));
+    EXPECT_EQ(msg.getU8(), 0xA0);
+}

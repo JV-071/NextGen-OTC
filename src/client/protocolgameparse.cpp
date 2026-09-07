@@ -3560,7 +3560,7 @@ void ProtocolGame::parseBestiaryOverview(const InputMessagePtr& msg)
 
 void ProtocolGame::parseBestiaryMonsterData(const InputMessagePtr& msg)
 {
-    BestiaryMonsterData data;
+    BestiaryMonsterData data{};
     data.id = msg->getU16();
     data.bestClass = msg->getString();
     data.currentLevel = msg->getU8();
@@ -3578,11 +3578,10 @@ void ProtocolGame::parseBestiaryMonsterData(const InputMessagePtr& msg)
     data.secondUnlock = msg->getU16();
     data.lastProgressKillCount = msg->getU16();
     data.difficulty = msg->getU8();
-    // Unlike 0xD6, 0xD7 always carries occurrence and loot count, including
-    // monsters whose current level is zero. There is no extra 15.30 byte here.
-    data.ocorrence = msg->getU8();
-
-    const uint8_t lootCount = msg->getU8();
+    // 15.25 gates the remaining detail fields on discovery and adds a byte
+    // between occurrence and the loot count. Older layouts remain unchanged.
+    const auto [occurrence, lootCount] = bestiary::readLootHeader(*msg, data.currentLevel, g_game.getClientVersion() >= 1525);
+    data.ocorrence = occurrence;
     for (auto i = 0; i < lootCount; ++i) {
         LootItem lootItem;
         lootItem.itemId = msg->getU16();

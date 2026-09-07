@@ -421,6 +421,9 @@ jobs:
 
   release:
     name: Publish Windows Server package
+    concurrency:
+      group: nextgen-release-latest
+      cancel-in-progress: false
     needs: build-windows-server
     runs-on: ubuntu-latest
 

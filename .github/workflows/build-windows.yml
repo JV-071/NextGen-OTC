@@ -11,6 +11,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "src/**"
+      - "tests/**"
       - "vcpkg.json"
       - "CMakeLists.txt"
       - "CMakePresets.json"
@@ -19,6 +20,7 @@ on:
     branches: [main]
     paths:
       - "src/**"
+      - "tests/**"
       - "vcpkg.json"
       - "CMakeLists.txt"
       - "CMakePresets.json"
@@ -251,6 +253,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    concurrency:
+      group: nextgen-release-latest
+      cancel-in-progress: false
 
     steps:
       - name: Download build artifact
@@ -262,16 +267,31 @@ jobs:
       - name: Zip binaries
         run: cd artifacts && zip -r ../NextGen-OTC-windows.zip .
 
-      - name: Recreate "latest" release
+      - name: Update "latest" release without deleting existing assets
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete latest -R "$GITHUB_REPOSITORY" --cleanup-tag --yes || true
-          gh release create latest NextGen-OTC-windows.zip \
-            -R "$GITHUB_REPOSITORY" \
-            --target "$GITHUB_SHA" \
-            --prerelease \
-            --title "Latest build ($(date -u +%Y-%m-%d), ${GITHUB_SHA::7})" \
-            --notes "Automatic build of the latest \`main\` commit ${GITHUB_SHA::7}.
+          # A newer push may change workflows while this build is running.
+          # Do not publish stale code or delete the previous release in that case.
+          head=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
+          if [ "$head" != "$GITHUB_SHA" ]; then
+            echo 'A newer main commit exists; keeping this build as an Actions artifact.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/latest" >/dev/null 2>&1; then
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/latest" \
+              -f sha="$GITHUB_SHA" -F force=true >/dev/null
+          else
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref=refs/tags/latest -f sha="$GITHUB_SHA" >/dev/null
+          fi
+          title="Latest build ($(date -u +%Y-%m-%d), ${GITHUB_SHA::7})"
+          notes="Automatic build of the latest \`main\` commit ${GITHUB_SHA::7}.
 
           Binary-only update: executable, matching debug symbols and any required DLLs. Install into an existing NextGen client with init.lua, data, modules and mods. Game assets remain separate. For a fresh installation, the optional runtime package can be generated with workflow_dispatch (include_runtime)."
+          if gh release view latest -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit latest -R "$GITHUB_REPOSITORY" --prerelease --title "$title" --notes "$notes"
+          else
+            gh release create latest -R "$GITHUB_REPOSITORY" --verify-tag --prerelease --title "$title" --notes "$notes"
+          fi
+          gh release upload latest NextGen-OTC-windows.zip -R "$GITHUB_REPOSITORY" --clobber

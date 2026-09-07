@@ -14,6 +14,18 @@ formatos anteriores, truncamento e alinhamento com o próximo opcode. A build
 Windows executa esse teste antes de publicar o artefato. Ainda é necessário
 confirmar a entrada e movimentação com o personagem na nova build.
 
+Validação: 34152142432 compilou 5b25920 e passou nos três testes nativos.
+O artefato Windows contém somente `NextGen-OTC.exe` e `otclient.pdb`, totalizando
+89320532 bytes compactados (89,3 MB). O job de build passou, mas o de release
+recebeu HTTP 403: a main avançara enquanto a compilação rodava. A publicação
+foi ajustada para preservar a release existente, serializar os publicadores e
+não publicar revisões antigas como latest. Essa alteração ainda precisa de CI.
+
+Uma conferência complementar encontrou a mudança correspondente em 0xD7:
+detalhes de criaturas não descobertas omitem o restante do pacote; entradas
+reveladas incluem um byte adicional antes da contagem de loot. O ajuste e um
+quarto teste foram adicionados; não estavam no artefato 5b25920.
+
 ## Configuração e distribuição
 
 `config.ini` estava ausente do repositório. Agora há um arquivo padrão com os
@@ -82,6 +94,11 @@ renderização por RDP, Server Core ou máquinas sem driver compatível.
 A build Server separada usa Release, sem testes; não constitui um backend
 gráfico diferente. Uma validação no servidor-alvo ainda é necessária.
 
+Alvo solicitado posteriormente: Windows Server 2012 em diante, inclusive RDP.
+Isso permanece uma meta de compatibilidade, não uma plataforma já certificada.
+É necessário auditar imports do executável/dependências e testar em Server 2012,
+incluindo a sessão RDP. O runner Server 2022 não substitui essa validação.
+
 Na interface atual, opções chamadas DirectX 12 e OpenGL acabam selecionando
 `renderBackend=gl`; não foi encontrado um renderizador D3D12 nativo nesse
 caminho. Mesa pode fornecer OpenGL sobre D3D12, mas isso depende do driver:
@@ -89,6 +106,9 @@ https://docs.mesa3d.org/drivers/d3d12.html
 
 `TOGGLE_DIRECTX` procura bibliotecas do SDK antigo; não implementa por si só
 DirectX 9. O caminho EGL de Windows pede contexto OpenGL ES 3, não ES 2.
+No upstream, a configuração MSBuild DirectX define `OPENGL_ES` e usa libEGL,
+libGLESv2 e bibliotecas D3D9/D3D11. Não é um renderer D3D9 direto intercambiável
+com o caminho atual do NextGen. A tabela do ANGLE limita o backend D3D9 a ES 2.
 Suporte DX9 real permanece pendente: precisa de um backend ou ponte
 gráfica e testes de shaders, atlas, minimapa/HD e desempenho. Não anunciamos
 compatibilidade apenas habilitando a opção de compilação. Referência possível:
