@@ -2,6 +2,11 @@ name: Build - Windows
 
 on:
   workflow_dispatch:
+    inputs:
+      include_runtime:
+        description: Also upload data, modules and default config as a separate package
+        type: boolean
+        default: false
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
@@ -168,6 +173,10 @@ jobs:
           Write-Error "Windows build failed. See the annotations or download NextGen-OTC-windows-build-log."
           exit 1
 
+      - name: Test bestiary protocol layouts
+        shell: pwsh
+        run: ctest --test-dir build/windows-release -R '^BestiaryOverview\.' --output-on-failure --no-tests=error
+
       - name: Prepare artifact folder
         shell: pwsh
         run: |
@@ -199,33 +208,41 @@ jobs:
             Copy-Item $dll.FullName -Destination $artifactDir
           }
 
-          # Include all tracked runtime files so the artifact is ready to run.
-          # The large data/things assets remain separate from the repository.
-          foreach ($item in @("init.lua", "data", "modules", "mods")) {
-            $src = Join-Path $env:GITHUB_WORKSPACE $item
-            if (Test-Path $src) {
-              Copy-Item $src -Destination $artifactDir -Recurse -Force
+          # Match the upstream binary-only artifact. ILK is optional: it only
+          # exists for incremental links and is not required to run the client.
+          foreach ($extension in @('pdb', 'ilk')) {
+            $symbol = Join-Path $exePath.Directory.FullName "otclient.$extension"
+            if (Test-Path -LiteralPath $symbol) {
+              Copy-Item -LiteralPath $symbol -Destination $artifactDir
+            } elseif ($extension -eq 'pdb') {
+              throw 'Matching otclient.pdb not found beside the executable.'
             }
           }
+
+      - name: Prepare optional runtime package
+        if: ${{ inputs.include_runtime }}
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path runtime | Out-Null
+          foreach ($item in @('init.lua', 'config.ini', 'data', 'modules', 'mods')) {
+            if (Test-Path -LiteralPath $item) {
+              Copy-Item -LiteralPath $item -Destination runtime -Recurse -Force
+            }
+          }
+
+      - name: Upload optional runtime package
+        if: ${{ inputs.include_runtime }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: NextGen-OTC-runtime
+          path: runtime
+          if-no-files-found: error
 
       - name: Upload executable artifact
         uses: actions/upload-artifact@v4
         with:
           name: NextGen-OTC-windows-release
           path: ${{ github.workspace }}/artifacts
-
-      # Keep symbols separate: players do not need to download them, but the
-      # exact matching PDB is essential when inspecting a frozen release build.
-      - name: Upload Windows debug symbols
-        uses: actions/upload-artifact@v4
-        with:
-          name: NextGen-OTC-windows-symbols
-          path: |
-            ${{ github.workspace }}/otclient.pdb
-            ${{ github.workspace }}/build/windows-release/otclient.pdb
-            ${{ github.workspace }}/build/windows-release/bin/otclient.pdb
-          if-no-files-found: error
-          retention-days: 14
 
   release:
     name: Publish "latest" release
@@ -257,4 +274,4 @@ jobs:
             --title "Latest build ($(date -u +%Y-%m-%d), ${GITHUB_SHA::7})" \
             --notes "Automatic build of the latest \`main\` commit ${GITHUB_SHA::7}.
 
-          Contains a runnable client with the executable, DLLs, init.lua, data, modules and mods. The large game assets in \`data/things\` must be downloaded separately."
+          Binary-only update: executable, matching debug symbols and any required DLLs. Install into an existing NextGen client with init.lua, data, modules and mods. Game assets remain separate. For a fresh installation, the optional runtime package can be generated with workflow_dispatch (include_runtime)."

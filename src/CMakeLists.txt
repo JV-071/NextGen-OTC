@@ -172,6 +172,7 @@ find_path(CPPCODEC_INCLUDE_DIRS "cppcodec/base32_crockford.hpp")
 
 if(APPLE)
   find_library(FOUNDATION Foundation REQUIRED)
+  find_library(SECURITY_FRAMEWORK Security REQUIRED)
   find_library(IOKIT IOKit REQUIRED)
 endif()
 
@@ -602,6 +603,11 @@ target_link_libraries(
   PRIVATE
   unofficial::inih::inireader
 )
+
+if(APPLE)
+  # cpp-httplib loads trusted certificates through the macOS Security API.
+  target_link_libraries(otclient_core PUBLIC ${SECURITY_FRAMEWORK})
+endif()
 
 # The local protobuf target owns the protoc custom commands that generate
 # appearances.pb.*, sounds.pb.* and staticdata.pb.*. Linking only against

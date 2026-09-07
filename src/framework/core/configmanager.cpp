@@ -179,12 +179,16 @@ void ConfigManager::saveSettings()
 }
 
 void ConfigManager::loadPublicConfig(const std::string& fileName) {
+    if (!g_resources.fileExists(fileName)) {
+        g_logger.info("[config] Optional '{}' not found; using built-in defaults", fileName);
+        return;
+    }
     try {
         auto content = g_resources.readFileContents(fileName);
         INIReader reader(content.c_str(), content.size());
 
-        if (reader.ParseError() < 0) {
-            g_logger.error("Failed to read config otml '{}''", fileName);
+        if (reader.ParseError() != 0) {
+            g_logger.error("Failed to parse public INI '{}' (error/line {})", fileName, reader.ParseError());
             return;
         }
 

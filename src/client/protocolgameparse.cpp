@@ -21,6 +21,7 @@
 */
 
 #include "animatedtext.h"
+#include "bestiaryparser.h"
 #include "attachedeffect.h"
 #include "attachedeffectmanager.h"
 #include "effect.h"
@@ -3525,27 +3526,13 @@ void ProtocolGame::parseBestiaryOverview(const InputMessagePtr& msg)
     // unconditionally shifts all following entries and makes 0xD6 reach EOF.
     // Some 15.x servers also retain the legacy layout without Animus fields,
     // so retry that layout transactionally when the current one is implausible.
+    const bool summer2026 = g_game.getClientVersion() >= 1525;
     const auto parseEntries = [&](const bool hasAnimusFields) {
         std::vector<BestiaryOverviewMonsters> parsed;
         parsed.reserve(raceSize);
 
         for (auto i = 0; i < raceSize; ++i) {
-            BestiaryOverviewMonsters monster;
-            monster.id = msg->getU16();
-            monster.currentLevel = msg->getU8();
-            if (monster.id == 0 || monster.currentLevel > 4)
-                throw std::runtime_error("invalid bestiary overview entry");
-
-            if (monster.currentLevel > 0) {
-                monster.occurrence = msg->getU8();
-                if (monster.occurrence > 3)
-                    throw std::runtime_error("invalid bestiary occurrence");
-            }
-
-            if (hasAnimusFields)
-                monster.creatureAnimusMasteryBonus = msg->getU16();
-
-            parsed.emplace_back(monster);
+            parsed.emplace_back(bestiary::readOverviewEntry(*msg, hasAnimusFields, summer2026));
         }
 
         const uint16_t points = hasAnimusFields ? msg->getU16() : 0;
@@ -3558,7 +3545,7 @@ void ProtocolGame::parseBestiaryOverview(const InputMessagePtr& msg)
         data = std::move(parsed.first);
         animusMasteryPoints = parsed.second;
     } catch (const std::exception&) {
-        if (!expectsAnimusFields)
+        if (!expectsAnimusFields || summer2026)
             throw;
 
         msg->setReadPos(entriesReadPos);
