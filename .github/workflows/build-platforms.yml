@@ -2,6 +2,12 @@ name: Build - Linux macOS Browser
 
 on:
   workflow_dispatch:
+    inputs:
+      platform:
+        description: Platform to build
+        type: choice
+        default: all
+        options: [all, linux, macos, browser]
   push:
     branches: [main]
     paths: ['src/**', 'cmake/**', 'browser/**', 'modules/**', 'mods/**', 'data/**', 'init.lua', 'otclientrc.lua', 'CMakeLists.txt', 'CMakePresets.json', 'vcpkg.json', '.github/workflows/build-platforms.yml']
@@ -12,24 +18,14 @@ permissions:
   contents: read
 
 concurrency:
-  group: nextgen-platforms-${{ github.ref }}
+  group: nextgen-platforms-${{ github.ref }}-${{ inputs.platform || 'all' }}
   cancel-in-progress: true
 
 jobs:
   build:
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - platform: linux
-            os: ubuntu-24.04
-            triplet: x64-linux
-          - platform: macos
-            os: macos-15
-            triplet: arm64-osx
-          - platform: browser
-            os: ubuntu-24.04
-            triplet: wasm32-emscripten-pthread
+      matrix: ${{ fromJSON(inputs.platform == 'linux' && '{"include":[{"platform":"linux","os":"ubuntu-24.04","triplet":"x64-linux"}]}' || inputs.platform == 'macos' && '{"include":[{"platform":"macos","os":"macos-15","triplet":"arm64-osx"}]}' || inputs.platform == 'browser' && '{"include":[{"platform":"browser","os":"ubuntu-24.04","triplet":"wasm32-emscripten-pthread"}]}' || '{"include":[{"platform":"linux","os":"ubuntu-24.04","triplet":"x64-linux"},{"platform":"macos","os":"macos-15","triplet":"arm64-osx"},{"platform":"browser","os":"ubuntu-24.04","triplet":"wasm32-emscripten-pthread"}]}') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 180
     defaults:
@@ -71,12 +67,13 @@ jobs:
           echo "commit=$baseline" >> "$GITHUB_OUTPUT"
           mkdir -p .cache/vcpkg "$CCACHE_DIR"
       - name: Restore compiled dependencies
+        id: dependencies
         uses: actions/cache/restore@v4
         with:
           path: |
             .cache/vcpkg
             vcpkg/downloads
-          key: deps-${{ matrix.os }}-${{ matrix.triplet }}-${{ hashFiles('vcpkg.json', 'browser/overlay-ports/**', 'browser/triplets/**') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: deps-${{ matrix.os }}-${{ matrix.triplet }}-${{ hashFiles('vcpkg.json', 'browser/overlay-ports/**', 'browser/triplets/**') }}-complete-v1
           restore-keys: |
             deps-${{ matrix.os }}-${{ matrix.triplet }}-${{ hashFiles('vcpkg.json', 'browser/overlay-ports/**', 'browser/triplets/**') }}-
             deps-${{ matrix.os }}-${{ matrix.triplet }}-
@@ -112,6 +109,7 @@ jobs:
           "$RUNNER_TEMP/emsdk/emsdk" install "$EMSDK_VERSION"
           "$RUNNER_TEMP/emsdk/emsdk" activate "$EMSDK_VERSION"
       - name: Configure and compile
+        id: compile
         env:
           PLATFORM: ${{ matrix.platform }}
           TRIPLET: ${{ matrix.triplet }}
@@ -139,13 +137,13 @@ jobs:
           path: ${{ runner.temp }}/emsdk
           key: emsdk-${{ runner.os }}-${{ runner.arch }}-${{ env.EMSDK_VERSION }}
       - name: Save dependency cache, including completed packages from failed builds
-        if: ${{ always() && steps.baseline.outcome == 'success' }}
+        if: ${{ always() && steps.baseline.outcome == 'success' && steps.dependencies.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
         with:
           path: |
             .cache/vcpkg
             vcpkg/downloads
-          key: deps-${{ matrix.os }}-${{ matrix.triplet }}-${{ hashFiles('vcpkg.json', 'browser/overlay-ports/**', 'browser/triplets/**') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: deps-${{ matrix.os }}-${{ matrix.triplet }}-${{ hashFiles('vcpkg.json', 'browser/overlay-ports/**', 'browser/triplets/**') }}-${{ steps.compile.outcome == 'success' && 'complete-v1' || format('{0}-{1}', github.run_id, github.run_attempt) }}
       - name: Save compiler cache
         if: ${{ always() && steps.baseline.outcome == 'success' }}
         uses: actions/cache/save@v4

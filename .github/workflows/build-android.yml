@@ -56,7 +56,10 @@ jobs:
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/$ndk" >> "$GITHUB_ENV"
           mkdir -p .cache/vcpkg "$CCACHE_DIR"
       - name: Install Android SDK components
-        run: sdkmanager "ndk;${{ steps.baseline.outputs.ndk }}" 'cmake;3.22.1' 'platforms;android-36' 'build-tools;36.0.0'
+        run: |
+          test -f android/app/src/main/AndroidManifest.xml
+          test -f android/app/src/main/java/com/otclient/MainActivity.kt
+          sdkmanager "ndk;${{ steps.baseline.outputs.ndk }}" 'cmake;3.22.1' 'platforms;android-36' 'build-tools;36.0.0'
       - name: Restore vcpkg binaries and compiler cache
         uses: actions/cache/restore@v4
         with:
@@ -83,7 +86,7 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: gradle-android-${{ hashFiles('android/**/*.gradle.kts', 'android/gradle/wrapper/gradle-wrapper.properties') }}-${{ github.run_id }}
+          key: gradle-android-${{ hashFiles('android/**/*.gradle.kts', 'android/gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: gradle-android-${{ hashFiles('android/**/*.gradle.kts', 'android/gradle/wrapper/gradle-wrapper.properties') }}-
       - name: Cache LuaJIT for all four Android architectures
         id: luajit

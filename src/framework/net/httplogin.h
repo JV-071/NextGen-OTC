@@ -26,6 +26,20 @@
 #    define CPPHTTPLIB_OPENSSL_SUPPORT
 #endif
 #include <framework/luaengine/luaobject.h>
+#ifdef __APPLE__
+// Apple's legacy geometry names collide with the client's global aliases.
+// Isolate only the SDK declarations; retain CFNetwork and TLS verification.
+#pragma push_macro("Size")
+#pragma push_macro("Point")
+#pragma push_macro("Rect")
+#define Size MacOSLegacySize
+#define Point MacOSLegacyPoint
+#define Rect MacOSLegacyRect
+#include <CoreFoundation/CoreFoundation.h>
+#pragma pop_macro("Rect")
+#pragma pop_macro("Point")
+#pragma pop_macro("Size")
+#endif
 #include <httplib.h>
 
 class LoginHttp final : public LuaObject

@@ -28,6 +28,7 @@ android {
                     "-DANDROID_STL=c++_shared",
                     "-DVCPKG_MANIFEST_INSTALL=ON",
                     "-DOPTIONS_ENABLE_CCACHE=ON",
+                    "-DOPTIONS_ENABLE_IPO=OFF",
                     "-DTOGGLE_PRE_COMPILED_HEADER=OFF",
                     "-DVCPKG_INSTALL_OPTIONS=--allow-unsupported"
                 )

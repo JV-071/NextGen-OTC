@@ -216,6 +216,8 @@ tags
 
 # user-specific files
 *.xml
+!android/app/src/main/**/*.xml
+!android/app/src/main/AndroidManifest.xml
 *.otb
 *.otbm
 *.spr

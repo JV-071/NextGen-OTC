@@ -216,6 +216,13 @@ double Platform::getMemoryUsage()
     return 0;
 }
 
+std::vector<std::string> Platform::getMacAddresses()
+{
+    // No portable hardware-address provider is implemented on Unix targets.
+    // Match the existing unsupported-platform contract without inventing an ID.
+    return {};
+}
+
 std::string Platform::getOSName()
 {
     std::string line;
