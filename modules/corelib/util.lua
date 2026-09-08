@@ -51,6 +51,15 @@ function connect(object, arg1, arg2, arg3)
 		return
 	end
 
+	-- A handler connected to a class table bypasses the object's __newindex.
+	-- Invalidate cached missing events so a handler added after the first event
+	-- lookup is dispatched normally.
+	-- Keep the data directory compatible with an older executable while a new
+	-- build is being produced from this working tree.
+	if invalidateEventCache then
+		invalidateEventCache()
+	end
+
 	local signalsAndSlots, pushFront
 
 	if type(arg1) == "string" then

@@ -91,9 +91,28 @@ local function updateFiles(data, keepCurrentFiles)
 		keepCurrentFiles = true
 	end
 
+	-- Only checksum roots managed by this updater manifest. Scanning the entire
+	-- virtual filesystem also hashes large versioned assets that the updater
+	-- does not own and can noticeably delay startup.
+	local checksumRoots = {}
+	local seenRoots = {}
+	for file in pairs(data.files) do
+		local root = file:match("^/?([^/]+)")
+		if root and not seenRoots[root] then
+			seenRoots[root] = true
+			table.insert(checksumRoots, root)
+		end
+	end
+
 	local newFiles = false
 	local finalFiles = {}
-	local localFiles = g_resources.filesChecksums()
+	local localFiles
+	if #checksumRoots > 0 and g_resources.filesChecksumsForPaths then
+		localFiles = g_resources.filesChecksumsForPaths(checksumRoots)
+	else
+		-- Compatibility with an older executable used with this data directory.
+		localFiles = g_resources.filesChecksums()
+	end
 	local toUpdate = {}
 	local toUpdateFiles = {}
 
@@ -248,7 +267,7 @@ function Updater.check(args)
 			return Updater.error(tr("Timeout"))
 		end
 
-		if updateData and (value > 60 or not g_platform.isMobile() or not ALLOW_CUSTOM_SERVERS or not loadModulesFunc) then
+		if updateData and (value > 60 or not g_platform.isMobile() or not ALLOW_CUSTOM_SERVERS or not loadModulesFunction) then
 			return updateFiles(updateData)
 		end
 

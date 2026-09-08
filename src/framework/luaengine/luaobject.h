@@ -25,6 +25,8 @@
 #include "declarations.h"
 #include <framework/util/stats.h>
 
+#include <cstdint>
+
  /// LuaObject, all script-able classes have it as base
  // @bindclass
 class LuaObject : public std::enable_shared_from_this<LuaObject>
@@ -91,9 +93,16 @@ public:
     template<typename T>
     std::shared_ptr<T> dynamic_self_cast() { return std::dynamic_pointer_cast<T>(shared_from_this()); }
 
+    /// Invalidates negative callLuaField cache entries. This is required when
+    /// handlers are connected to a class table because that bypasses an
+    /// instance's __newindex metamethod.
+    static void invalidateEventCache() { ++s_eventCacheGeneration; }
+
 private:
     int m_fieldsTableRef;
-    std::unordered_map<std::string, bool> m_events;
+    std::unordered_map<std::string, uint32_t> m_missingEvents;
+
+    inline static uint32_t s_eventCacheGeneration = 1;
 
     friend class LuaInterface;
 };
@@ -222,16 +231,18 @@ void LuaObject::callLuaField(const std::string_view field, const T&... args)
     const std::string fieldStr = field.data();
 
     // Avoids unnecessary overhead by checking if the field is registered before invoking the Lua event.
-    auto it = m_events.find(fieldStr);
-    if (it != m_events.end() && !it->second)
+    if (const auto it = m_missingEvents.find(fieldStr);
+        it != m_missingEvents.end() && it->second == s_eventCacheGeneration)
         return;
 
     const int rets = luaCallLuaField(field, args...);
     if (rets > 0)
         g_lua.pop(rets);
 
-    if (it == m_events.end())
-        m_events[fieldStr] = rets > -1;
+    if (rets == -1)
+        m_missingEvents[fieldStr] = s_eventCacheGeneration;
+    else
+        m_missingEvents.erase(fieldStr);
 }
 
 template<typename... T>

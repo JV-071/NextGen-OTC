@@ -3,7 +3,7 @@
 local smartWalkDirs = {}
 local smartWalkDir, walkEvent
 local lastTurn = 0
-local nextWalkDir, lastWalkDir
+local nextWalkDir
 local lastCancelWalkTime = 0
 local pendingWalkEventDir
 local DEFAULT_KEYBOARD_DELAY_MS = 250
@@ -468,15 +468,12 @@ local function walk(dir)
 	end
 
 	if not player:canWalk() then
-		if lastWalkDir ~= dir then
-			nextWalkDir = dir
-		end
+		nextWalkDir = dir
 
 		return
 	end
 
 	nextWalkDir = nil
-	lastWalkDir = dir
 
 	if modules.client_options and modules.client_options.getOption("alwaysTurnTowardsMovement") and player:getDirection() ~= dir then
 		g_game.turn(dir)

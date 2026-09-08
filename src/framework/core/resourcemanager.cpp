@@ -781,20 +781,49 @@ std::string ResourceManager::fileChecksum(const std::string& path) {
 
 std::unordered_map<std::string, std::string> ResourceManager::filesChecksums()
 {
+    return filesChecksumsForPaths({ "/" });
+}
+
+std::unordered_map<std::string, std::string> ResourceManager::filesChecksumsForPaths(const std::vector<std::string>& paths)
+{
     std::unordered_map<std::string, std::string> ret;
-    auto files = listDirectoryFiles("/", true, false, true);
-    for (auto& filePath : std::ranges::reverse_view(files)) {
-        PHYSFS_File* file = PHYSFS_openRead(filePath.c_str());
-        if (!file)
+    for (const auto& requestedPath : paths) {
+        if (requestedPath.empty())
             continue;
 
-        const int fileSize = PHYSFS_fileLength(file);
-        std::string buffer(fileSize, 0);
-        PHYSFS_readBytes(file, &buffer[0], fileSize);
-        PHYSFS_close(file);
+        const std::string root = requestedPath.front() == '/' ? requestedPath : "/" + requestedPath;
+        if (!PHYSFS_exists(root.c_str()))
+            continue;
 
-        const auto checksum = g_crypt.crc32(buffer, false);
-        ret[filePath] = checksum;
+        std::list<std::string> files;
+        if (directoryExists(root))
+            files = listDirectoryFiles(root, true, false, true);
+        else
+            files.push_back(root);
+
+        for (auto& filePath : std::ranges::reverse_view(files)) {
+            if (ret.contains(filePath))
+                continue;
+
+            PHYSFS_File* file = PHYSFS_openRead(filePath.c_str());
+            if (!file)
+                continue;
+
+            const int64_t fileSize = PHYSFS_fileLength(file);
+            if (fileSize < 0 || static_cast<uint64_t>(fileSize) > std::string{}.max_size()) {
+                PHYSFS_close(file);
+                continue;
+            }
+
+            std::string buffer(static_cast<size_t>(fileSize), '\0');
+            if (fileSize > 0 && PHYSFS_readBytes(file, buffer.data(), fileSize) != fileSize) {
+                PHYSFS_close(file);
+                continue;
+            }
+            PHYSFS_close(file);
+
+            ret[filePath] = g_crypt.crc32(buffer, false);
+        }
     }
 
     return ret;

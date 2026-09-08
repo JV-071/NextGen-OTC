@@ -90,6 +90,7 @@ public:
 
     std::string fileChecksum(const std::string& path);
     std::unordered_map<std::string, std::string> filesChecksums();
+    std::unordered_map<std::string, std::string> filesChecksumsForPaths(const std::vector<std::string>& paths);
     std::string selfChecksum();
     void updateFiles(const std::set<std::string>& files);
     void updateExecutable(std::string fileName);

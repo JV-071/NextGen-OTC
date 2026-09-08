@@ -79,6 +79,8 @@
 
 void Application::registerLuaFunctions()
 {
+    g_lua.bindGlobalFunction("invalidateEventCache", [] { LuaObject::invalidateEventCache(); });
+
     // conversion globals
     g_lua.bindGlobalFunction("torect", [](const std::string_view v) { return stdext::from_string<Rect>(v); });
     g_lua.bindGlobalFunction("topoint", [](const std::string_view v) { return stdext::from_string<Point>(v); });
@@ -284,6 +286,7 @@ void Application::registerLuaFunctions()
     g_lua.bindSingletonFunction("g_resources", "resolvePath", &ResourceManager::resolvePath, &g_resources);
     g_lua.bindSingletonFunction("g_resources", "fileChecksum", &ResourceManager::fileChecksum, &g_resources);
     g_lua.bindSingletonFunction("g_resources", "filesChecksums", &ResourceManager::filesChecksums, &g_resources);
+    g_lua.bindSingletonFunction("g_resources", "filesChecksumsForPaths", &ResourceManager::filesChecksumsForPaths, &g_resources);
     g_lua.bindSingletonFunction("g_resources", "selfChecksum", &ResourceManager::selfChecksum, &g_resources);
     g_lua.bindSingletonFunction("g_resources", "updateFiles", &ResourceManager::updateFiles, &g_resources);
     g_lua.bindSingletonFunction("g_resources", "updateExecutable", &ResourceManager::updateExecutable, &g_resources);

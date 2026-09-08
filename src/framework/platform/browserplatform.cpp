@@ -103,6 +103,13 @@ bool Platform::openDir(std::string path, bool now)
     return true;
 }
 
+std::vector<std::string> Platform::getMacAddresses()
+{
+    // Browsers intentionally do not expose network-interface hardware
+    // addresses. Match the unsupported Unix-platform contract.
+    return {};
+}
+
 std::string Platform::getCPUName()
 {
     return std::string();

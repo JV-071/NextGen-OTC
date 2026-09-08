@@ -478,7 +478,9 @@ void LocalPlayer::setInventoryItem(const Otc::InventorySlot inventory, const Ite
     if (m_inventoryItems[inventory] == item)
         return;
 
-    const auto& oldItem = m_inventoryItems[inventory];
+    // Keep a copy: a reference would alias the slot overwritten below and Lua
+    // would receive the new item as both the old and the new value.
+    const ItemPtr oldItem = m_inventoryItems[inventory];
     m_inventoryItems[inventory] = item;
 
     if (item && g_game.getFeature(Otc::GameThingClock) && item->getDurationTime() > 0
