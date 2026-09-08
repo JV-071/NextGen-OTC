@@ -71,11 +71,9 @@ UIWidget
       anchors.left: parent.left
       anchors.right: parent.right
       anchors.top: parent.top
-      color: #707070
       margin-top: -1
       margin-left: 0
       text-offset: 16 0
-      enabled: false
 
     UIWidget
       id: animatedMouseCursorHelp

@@ -258,7 +258,7 @@ void SoundManager::stopAll()
     for (auto& streamFile : m_streamFiles) {
         auto& future = streamFile.second;
         if (future.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
-            future.get();
+            static_cast<void>(future.get());
     }
     m_streamFiles.clear();
 
@@ -632,14 +632,16 @@ void SoundManager::playSoundEffect(uint32_t effectId)
     // randomize pitch and volume
     float pitch = 1.0f;
     if (effect.pitchMax > effect.pitchMin && effect.pitchMin > 0) {
-        pitch = effect.pitchMin + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / (effect.pitchMax - effect.pitchMin)));
+        const float randomUnit = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+        pitch = effect.pitchMin + randomUnit * (effect.pitchMax - effect.pitchMin);
     } else if (effect.pitchMin > 0) {
         pitch = effect.pitchMin;
     }
 
     float gain = 1.0f;
     if (effect.volumeMax > effect.volumeMin && effect.volumeMin > 0) {
-        gain = effect.volumeMin + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / (effect.volumeMax - effect.volumeMin)));
+        const float randomUnit = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+        gain = effect.volumeMin + randomUnit * (effect.volumeMax - effect.volumeMin);
     } else if (effect.volumeMax > 0) {
         gain = effect.volumeMax;
     }

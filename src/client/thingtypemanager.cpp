@@ -181,7 +181,18 @@ bool ThingTypeManager::loadAppearances(const std::string& file)
 #ifdef FRAMEWORK_PROTOBUF
     try {
         try {
-            m_assetIdentifier = g_resources.readFileContents(g_resources.resolvePath(g_resources.guessFilePath(file + "assets", "json.sha256")));
+            std::string identifierPath;
+            try {
+                identifierPath = g_resources.guessFilePath(file + "assets", "json.sha256");
+            } catch (const std::exception&) {
+                // Keep the version folder entirely user-provided. The shared
+                // identifier lets release/source archives omit an empty 1530
+                // directory while a version-specific identifier, when supplied,
+                // still takes precedence.
+                identifierPath = g_resources.guessFilePath("/data/things/assets", "json.sha256");
+            }
+
+            m_assetIdentifier = g_resources.readFileContents(g_resources.resolvePath(identifierPath));
             const bool validHash = m_assetIdentifier.size() == 64 &&
                 std::ranges::all_of(m_assetIdentifier, [](const char c) {
                     return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');

@@ -6141,6 +6141,11 @@ void ProtocolGame::parseCyclopediaCharacterInfo(const InputMessagePtr& msg)
             g_game.processCyclopediaCharacterGeneralStatsBadge(showAccountInformation, playerOnline, playerPremium, loyaltyTitle, badgesVector);
             break;
         }
+        case Otc::CYCLOPEDIA_CHARACTERINFO_WHEEL:
+        {
+            // This response currently has no payload handled by the client.
+            break;
+        }
         case Otc::CYCLOPEDIA_CHARACTERINFO_OFFENCESTATS:
         {
             CyclopediaCharacterOffenceStats data;

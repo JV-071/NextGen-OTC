@@ -1,6 +1,4 @@
 *
 !.gitignore
 !README.md
-!1530/
-1530/*
-!1530/assets.json.sha256
+!assets.json.sha256

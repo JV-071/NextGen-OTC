@@ -1385,6 +1385,13 @@ return {
 			end
 		end
 	},
+	showAnimatedMouseCursor = {
+		deferAction = true,
+		value = true,
+		action = function(value, options, controller, panels, extraWidgets)
+			panels.gameMapPanel:setCursorAnimations(value)
+		end
+	},
 	showBigMouseCursor = {
 		deferAction = true,
 		value = false,

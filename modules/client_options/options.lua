@@ -1940,6 +1940,13 @@ local function setup()
 		end
 	end
 
+	-- Older profiles may contain both values as true because the animated
+	-- checkbox used to be disabled and had no option entry. Preserve an
+	-- explicitly selected native cursor and turn the conflicting mode off.
+	if getOption("useNativeMouseCursor") and getOption("showAnimatedMouseCursor") then
+		setOption("showAnimatedMouseCursor", false, true)
+	end
+
 	-- The source of truth for the engine list is config.ini (renderBackend). It must run AFTER the
 	-- loop above that loads saved options - earlier getOption returns the default (0), the correction
 	-- does nothing, and the old value loaded a moment later (e.g. 3) would show a dead engine.
@@ -2559,6 +2566,24 @@ function setOption(key, value, force)
 		end
 
 		option.pendingValue = value
+
+		-- The native operating-system cursor and the animated in-game cursor are
+		-- mutually exclusive. Keep their pending values and visible checkboxes in
+		-- sync before Apply/OK, independent of pairs() iteration order at commit.
+		local oppositeCursorOption
+
+		if value and key == "useNativeMouseCursor" then
+			oppositeCursorOption = "showAnimatedMouseCursor"
+		elseif value and key == "showAnimatedMouseCursor" then
+			oppositeCursorOption = "useNativeMouseCursor"
+		end
+
+		if oppositeCursorOption and options[oppositeCursorOption] then
+			local opposite = options[oppositeCursorOption]
+
+			opposite.pendingValue = opposite.value and false or nil
+			syncOptionWidgetAcrossPanels(oppositeCursorOption, false)
+		end
 
 		if key == "showExpiryInContainers" then
 			updateShowExpiryOnUnusedAvailability(panels, value)
