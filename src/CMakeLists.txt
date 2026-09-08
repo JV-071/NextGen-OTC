@@ -1246,7 +1246,11 @@ elseif(WASM)
 
     -sPTHREAD_POOL_SIZE=navigator.hardwareConcurrency
 
-    -sALLOW_MEMORY_GROWTH=1
+    # A growable pthread heap is exposed as a resizable SharedArrayBuffer.
+    # Chrome 149+ rejects that buffer as a WebGL upload source, so keep the
+    # shared heap fixed and large enough for the client's asset set.
+    -sALLOW_MEMORY_GROWTH=0
+    -sINITIAL_MEMORY=1073741824
 
     "--preload-file=${CMAKE_SOURCE_DIR}/otclientrc.lua@otclientrc.lua"
     "--preload-file=${CMAKE_SOURCE_DIR}/init.lua@init.lua"
