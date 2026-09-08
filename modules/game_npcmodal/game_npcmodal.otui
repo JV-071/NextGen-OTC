@@ -209,7 +209,7 @@ NpcModalWindow < npcWindowBase
 
   UIWidget
     id: miniborderRight
-    image-source: /assets/images/ui/miniborder-bottom-right
+    image-source: /images/ui/miniborder-bottom-right
     anchors.right: parent.right
     anchors.bottom: parent.bottom
     margin-right: 3

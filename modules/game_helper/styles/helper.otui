@@ -6,7 +6,7 @@ HelperPostureButton < UIWidget
   UIWidget
     id: activeSpell
     anchors.fill: parent
-    image-source: /assets/images/game/actionbar/border_activespell
+    image-source: /images/game/actionbar/border_activespell
     image-size: 28 28
     visible: false
     phantom: true

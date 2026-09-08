@@ -1,4 +1,4 @@
-﻿-- chunkname: @/assets/locales/pt.lua
+-- chunkname: @/locales/pt.lua
 
 locale = {
 	formatNumbers = true,

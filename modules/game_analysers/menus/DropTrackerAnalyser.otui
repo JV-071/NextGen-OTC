@@ -176,7 +176,7 @@ MiniWindow
       anchors.left: parent.left
       margin-top: 12
       margin-left: 24
-      image-source: /assets/images/game/analyzer/addtracked
+      image-source: /images/game/analyzer/addtracked
       image-clip: 0 0 108 20
 
       $pressed:

@@ -49,7 +49,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Get vcpkg commit ID
         id: vcpkg-step
@@ -84,12 +84,13 @@ jobs:
           "hash=$hash" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
       - name: Cache vcpkg artifacts
-        uses: actions/cache/restore@v4
+        id: vcpkg-cache
+        uses: actions/cache/restore@v6
         with:
           path: |
             ${{ github.workspace }}/.vcpkg-binary-cache
             ${{ github.workspace }}/vcpkg/downloads
-          key: vcpkg-windows-x64-static-${{ hashFiles('vcpkg.json') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: vcpkg-windows-x64-static-${{ hashFiles('vcpkg.json') }}-complete-v1
           restore-keys: |
             vcpkg-windows-x64-static-${{ hashFiles('vcpkg.json') }}-
             vcpkg-windows-x64-static-
@@ -138,17 +139,17 @@ jobs:
           exit $LASTEXITCODE
 
       - name: Save completed vcpkg work
-        if: ${{ always() && steps.compile.outcome != 'skipped' }}
-        uses: actions/cache/save@v4
+        if: ${{ always() && steps.compile.outcome != 'skipped' && steps.vcpkg-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v6
         with:
           path: |
             ${{ github.workspace }}/.vcpkg-binary-cache
             ${{ github.workspace }}/vcpkg/downloads
-          key: vcpkg-windows-x64-static-${{ hashFiles('vcpkg.json') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: vcpkg-windows-x64-static-${{ hashFiles('vcpkg.json') }}-${{ steps.compile.outcome == 'success' && 'complete-v1' || format('{0}-{1}', github.run_id, github.run_attempt) }}
 
       - name: Upload build diagnostics
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: NextGen-OTC-windows-build-log
           path: |
@@ -232,16 +233,34 @@ jobs:
             }
           }
 
+      - name: Validate Windows executable and runtime linkage
+        shell: pwsh
+        run: |
+          $exe = "$env:GITHUB_WORKSPACE\artifacts\NextGen-OTC.exe"
+          $headers = & dumpbin.exe /nologo /headers $exe
+          if ($LASTEXITCODE -ne 0 -or @($headers -match 'machine \(x64\)').Count -eq 0) {
+            throw 'Packaged executable is not a valid x64 PE image.'
+          }
+
+          $imports = & dumpbin.exe /nologo /dependents $exe
+          if ($LASTEXITCODE -ne 0) {
+            throw 'dumpbin failed while checking executable dependencies.'
+          }
+          $dynamicRuntime = @($imports | Where-Object { $_ -match '(vcruntime|msvcp|concrt)[0-9_]*\.dll' })
+          if ($dynamicRuntime.Count -gt 0) {
+            throw "Static package unexpectedly imports the dynamic MSVC runtime: $($dynamicRuntime -join ', ')"
+          }
+
       - name: Upload optional runtime package
         if: ${{ inputs.include_runtime }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: NextGen-OTC-runtime
           path: runtime
           if-no-files-found: error
 
       - name: Upload executable artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: NextGen-OTC-windows-release
           path: ${{ github.workspace }}/artifacts
@@ -259,7 +278,7 @@ jobs:
 
     steps:
       - name: Download build artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: NextGen-OTC-windows-release
           path: artifacts

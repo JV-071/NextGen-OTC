@@ -137,7 +137,7 @@ PhantomMiniWindow
 
     UICheckBox
       id: expert
-      image-source: /assets/images/inventory/button-expert-up
+      image-source: /images/inventory/button-expert-up
       anchors.right: standPosture.right
       anchors.top: followPosture.bottom
       phantom: false
@@ -146,10 +146,10 @@ PhantomMiniWindow
       !tooltip: tr('Toggle expert pvp settings')
 
       $checked:
-        image-source: /assets/images/inventory/button-expert-down
+        image-source: /images/inventory/button-expert-down
 
       $disabled:
-        image-source: /assets/images/inventory/button-expert-disabled
+        image-source: /images/inventory/button-expert-disabled
 
     UICheckBox
       id: pvp
@@ -445,7 +445,7 @@ PhantomMiniWindow
 
     UICheckBox
       id: expert
-      image-source: /assets/images/inventory/button-expert-small-up
+      image-source: /images/inventory/button-expert-small-up
       anchors.left: changeSize.left
       anchors.bottom: soulAndCapacity.bottom
       phantom: false
@@ -453,10 +453,10 @@ PhantomMiniWindow
       !tooltip: tr('Toggle expert pvp settings')
 
       $checked:
-        image-source: /assets/images/inventory/button-expert-small-down
+        image-source: /images/inventory/button-expert-small-down
 
       $disabled:
-        image-source: /assets/images/inventory/button-expert-disabled
+        image-source: /images/inventory/button-expert-disabled
 
     UIButton
       id: blessings

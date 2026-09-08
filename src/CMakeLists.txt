@@ -311,7 +311,21 @@ else()
 
   else()
 
-    set(LUA_LIBRARY ${LUA_LIBRARY} ${CMAKE_SOURCE_DIR}/browser/include/lua51/liblua.a)
+    set(
+      OTCLIENT_WASM_LUA_LIBRARY
+      "${CMAKE_SOURCE_DIR}/browser/include/lua51/liblua.a"
+      CACHE FILEPATH
+      "Lua 5.1 static library compiled for Emscripten"
+    )
+
+    if(NOT EXISTS "${OTCLIENT_WASM_LUA_LIBRARY}")
+      message(FATAL_ERROR
+        "Lua 5.1 WebAssembly library not found at '${OTCLIENT_WASM_LUA_LIBRARY}'. "
+        "Run browser/build-lua51.sh or pass -DOTCLIENT_WASM_LUA_LIBRARY=<path>."
+      )
+    endif()
+
+    set(LUA_LIBRARY ${LUA_LIBRARY} "${OTCLIENT_WASM_LUA_LIBRARY}")
     set(BROWSER_INCLUDE_DIR ${BROWSER_INCLUDE_DIR} ${CMAKE_SOURCE_DIR}/browser/include)
 
   endif()

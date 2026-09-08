@@ -121,21 +121,35 @@ void ConfigManager::setRenderBackend(const std::string& backend)
 
     m_publicConfig.graphics.renderBackend = backend;
 
-    // config.ini sits next to the exe and is a plain text file; we replace only this one
-    // line so we don't lose comments or the rest of the user's settings
-    const std::string path = "config.ini";
+    // Always update the public config discovered beside init.lua. The process
+    // current directory may be unrelated when the client is launched through
+    // a shortcut, IDE or updater.
+    const std::string path = g_resources.getWorkDir() + "config.ini";
     std::ifstream in(path);
-    if (!in.is_open()) {
-        g_logger.warning("[config] cannot open {} to write the backend", path);
-        return;
-    }
 
     std::vector<std::string> lines;
     std::string line;
+    bool graphicsSection = false;
+    bool foundGraphicsSection = false;
     bool replaced = false;
 
-    while (std::getline(in, line)) {
-        if (line.rfind("renderBackend", 0) == 0) {
+    while (in.is_open() && std::getline(in, line)) {
+        const auto first = line.find_first_not_of(" \t");
+        const auto last = line.find_last_not_of(" \t\r");
+        const std::string_view trimmed = first == std::string::npos
+                                             ? std::string_view{}
+                                             : std::string_view(line).substr(first, last - first + 1);
+
+        if (trimmed.starts_with('[') && trimmed.ends_with(']')) {
+            if (graphicsSection && !replaced) {
+                lines.push_back("renderBackend = " + backend);
+                replaced = true;
+            }
+            graphicsSection = trimmed == "[graphics]";
+            foundGraphicsSection = foundGraphicsSection || graphicsSection;
+        }
+
+        if (graphicsSection && (trimmed.starts_with("renderBackend=") || trimmed.starts_with("renderBackend "))) {
             lines.push_back("renderBackend = " + backend);
             replaced = true;
         } else {
@@ -143,6 +157,12 @@ void ConfigManager::setRenderBackend(const std::string& backend)
         }
     }
     in.close();
+
+    if (!foundGraphicsSection) {
+        if (!lines.empty() && !lines.back().empty())
+            lines.emplace_back();
+        lines.emplace_back("[graphics]");
+    }
 
     if (!replaced)
         lines.push_back("renderBackend = " + backend);

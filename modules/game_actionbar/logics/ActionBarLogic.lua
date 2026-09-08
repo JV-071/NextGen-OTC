@@ -298,15 +298,15 @@ local SIDE_LOCK_HEIGHT = 16
 local SIDE_LOCK_SPEC = {
 	{
 		frameWidth = 34,
-		source = "/assets/images/game/actionbar/button-locked-horizontal-one"
+		source = "/images/game/actionbar/button-locked-horizontal-one"
 	},
 	{
 		frameWidth = 70,
-		source = "/assets/images/game/actionbar/button-locked-horizontal-two"
+		source = "/images/game/actionbar/button-locked-horizontal-two"
 	},
 	{
 		frameWidth = 106,
-		source = "/assets/images/game/actionbar/button-locked-horizontal-three"
+		source = "/images/game/actionbar/button-locked-horizontal-three"
 	}
 }
 

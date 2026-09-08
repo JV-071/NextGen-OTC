@@ -1,4 +1,4 @@
-﻿-- chunkname: @/assets/locales/de.lua
+-- chunkname: @/locales/de.lua
 
 locale = {
 	charset = "cp1252",

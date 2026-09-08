@@ -1,4 +1,4 @@
-﻿-- chunkname: @/assets/locales/sv.lua
+-- chunkname: @/locales/sv.lua
 
 locale = {
 	languageName = "Svenska",

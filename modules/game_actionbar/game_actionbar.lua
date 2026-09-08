@@ -117,7 +117,7 @@ virtuesYellowBorderSpellIds = {}
 local managedVirtueYellowBorderSpellIds = {}
 local managedVirtueYellowBorderSelection = {}
 
-VIRTUE_YELLOW_BORDER_IMAGE = "/assets/images/game/actionbar/border_activespell"
+VIRTUE_YELLOW_BORDER_IMAGE = "/images/game/actionbar/border_activespell"
 
 local ACTIONBAR_ITEM_MULTI_CD_KEY = "itemShared"
 local slotGrayRefreshEvent

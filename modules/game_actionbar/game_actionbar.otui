@@ -67,7 +67,7 @@ ActionSlot < UIActionSlot
     size: 32 32
     anchors.horizontalCenter: parent.horizontalCenter
     anchors.verticalCenter: parent.verticalCenter
-    image-source: /assets/images/game/actionbar/slot-disabled
+    image-source: /images/game/actionbar/slot-disabled
     image-size: 32 32
     visible: false
 
@@ -107,7 +107,7 @@ ActionSlot < UIActionSlot
   UIWidget
     id: multiIcon
     size: 5 11
-    image-source: /assets/images/game/actionbar/marker-multiactionbutton
+    image-source: /images/game/actionbar/marker-multiactionbutton
     image-size: 5 11
     anchors.top: parent.top
     anchors.left: parent.left
@@ -134,7 +134,7 @@ ActionSlot < UIActionSlot
     size: 32 32
     anchors.horizontalCenter: parent.horizontalCenter
     anchors.verticalCenter: parent.verticalCenter
-    image-source: /assets/images/game/actionbar/border_activespell
+    image-source: /images/game/actionbar/border_activespell
     image-size: 32 32
     visible: false
     phantom: true

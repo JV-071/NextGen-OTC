@@ -22,7 +22,7 @@ ShooterSpellAssignPreview < Panel
     size: 32 32
     image-size: 32 32
     margin-top: -14
-    image-source: /assets/images/game/actionbar/slot-disabled
+    image-source: /images/game/actionbar/slot-disabled
 
   HelperRuneIconBackground
     id: previewRuneBackground

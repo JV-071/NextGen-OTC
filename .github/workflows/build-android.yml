@@ -27,8 +27,8 @@ jobs:
       VCPKG_MAX_CONCURRENCY: 2
       LUAJIT_COMMIT: d0e88930ddde28ff662503f9f20facf34f7265aa
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
@@ -60,17 +60,24 @@ jobs:
           test -f android/app/src/main/AndroidManifest.xml
           test -f android/app/src/main/java/com/otclient/MainActivity.kt
           sdkmanager "ndk;${{ steps.baseline.outputs.ndk }}" 'cmake;3.22.1' 'platforms;android-36' 'build-tools;36.0.0'
-      - name: Restore vcpkg binaries and compiler cache
-        uses: actions/cache/restore@v4
+      - name: Restore compiled Android dependencies
+        id: dependencies
+        uses: actions/cache/restore@v6
         with:
           path: |
             .cache/vcpkg
-            .cache/ccache
             vcpkg/downloads
-          key: android-native-${{ steps.baseline.outputs.ndk }}-${{ hashFiles('vcpkg.json') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: android-deps-${{ steps.baseline.outputs.ndk }}-${{ hashFiles('vcpkg.json') }}-complete-v1
           restore-keys: |
+            android-deps-${{ steps.baseline.outputs.ndk }}-${{ hashFiles('vcpkg.json') }}-
+            android-deps-${{ steps.baseline.outputs.ndk }}-
             android-native-${{ steps.baseline.outputs.ndk }}-${{ hashFiles('vcpkg.json') }}-
-            android-native-${{ steps.baseline.outputs.ndk }}-
+      - name: Compiler cache
+        uses: hendrikmuhs/ccache-action@v1.2.23
+        with:
+          variant: ccache
+          max-size: 500M
+          key: android-${{ steps.baseline.outputs.ndk }}
       - name: Install pinned vcpkg
         uses: lukka/run-vcpkg@b1a0dd252f06b9e25b3c022a9a03bd7a427fb6a2
         with:
@@ -81,7 +88,7 @@ jobs:
           echo "VCPKG_DEFAULT_BINARY_CACHE=$GITHUB_WORKSPACE/.cache/vcpkg" >> "$GITHUB_ENV"
           echo "VCPKG_BINARY_SOURCES=clear;files,$GITHUB_WORKSPACE/.cache/vcpkg,readwrite" >> "$GITHUB_ENV"
       - name: Cache Gradle dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.gradle/caches
@@ -90,7 +97,7 @@ jobs:
           restore-keys: gradle-android-${{ hashFiles('android/**/*.gradle.kts', 'android/gradle/wrapper/gradle-wrapper.properties') }}-
       - name: Cache LuaJIT for all four Android architectures
         id: luajit
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             android/app/libs/include/luajit
@@ -112,33 +119,33 @@ jobs:
               -validity 10000 -dname 'CN=Android Debug,O=Android,C=US'
           fi
       - name: Build APK
+        id: apk
         working-directory: android
         run: |
           # vcpkg must download its supported CMake, rather than being forced to
           # use Gradle's older 3.22 CMake for modern vcpkg port metadata.
           unset VCPKG_FORCE_SYSTEM_BINARIES
           bash gradlew --no-daemon --max-workers=2 --build-cache assembleRelease
-      - name: Save completed dependency and compiler work even on failure
-        if: ${{ always() && steps.baseline.outcome == 'success' }}
-        uses: actions/cache/save@v4
+      - name: Save completed dependency work even on failure
+        if: ${{ always() && steps.baseline.outcome == 'success' && steps.dependencies.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v6
         with:
           path: |
             .cache/vcpkg
-            .cache/ccache
             vcpkg/downloads
-          key: android-native-${{ steps.baseline.outputs.ndk }}-${{ hashFiles('vcpkg.json') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: android-deps-${{ steps.baseline.outputs.ndk }}-${{ hashFiles('vcpkg.json') }}-${{ steps.apk.outcome == 'success' && 'complete-v1' || format('{0}-{1}', github.run_id, github.run_attempt) }}
       - name: Report compiler cache statistics
         if: always()
         run: ccache --show-stats
       - name: Upload development-signed APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: NextGen-OTC-android-release
           path: android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
       - name: Upload dependency diagnostics
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: diagnostics-android
           path: |

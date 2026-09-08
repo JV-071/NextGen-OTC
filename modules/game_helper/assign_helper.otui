@@ -39,7 +39,7 @@ HelperAssignPreview < Panel
     phantom: true
     focusable: false
     visible: false
-    image-source: /assets/images/game/actionbar/slot-disabled
+    image-source: /images/game/actionbar/slot-disabled
     image-size: 32 32
 
   Panel
@@ -51,7 +51,7 @@ HelperAssignPreview < Panel
     phantom: true
     focusable: false
     visible: false
-    image-source: /assets/images/game/actionbar/slot-disabled
+    image-source: /images/game/actionbar/slot-disabled
     image-size: 32 32
 
   Label
@@ -117,7 +117,7 @@ HelperAssignListLabel < Panel
     phantom: true
     focusable: false
     visible: false
-    image-source: /assets/images/game/actionbar/slot-disabled
+    image-source: /images/game/actionbar/slot-disabled
     image-size: 32 32
 
   UIWidget

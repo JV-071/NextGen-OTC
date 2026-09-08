@@ -1,4 +1,4 @@
-﻿-- chunkname: @/assets/locales/pl.lua
+-- chunkname: @/locales/pl.lua
 
 locale = {
 	languageName = "Polski",

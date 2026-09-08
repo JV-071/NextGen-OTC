@@ -1,4 +1,4 @@
-﻿-- chunkname: @/assets/locales/en.lua
+-- chunkname: @/locales/en.lua
 
 locale = {
 	decimalSeperator = ".",

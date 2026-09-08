@@ -38,8 +38,9 @@ jobs:
       CMAKE_BUILD_PARALLEL_LEVEL: 2
       VCPKG_MAX_CONCURRENCY: 2
       EMSDK_VERSION: 6.0.9
+      LUA_VERSION: 5.1.5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install Linux tools
         if: runner.os == 'Linux'
         run: |
@@ -68,7 +69,7 @@ jobs:
           mkdir -p .cache/vcpkg "$CCACHE_DIR"
       - name: Restore compiled dependencies
         id: dependencies
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: |
             .cache/vcpkg
@@ -78,7 +79,7 @@ jobs:
             deps-${{ matrix.os }}-${{ matrix.triplet }}-${{ hashFiles('vcpkg.json', 'browser/overlay-ports/**', 'browser/triplets/**') }}-
             deps-${{ matrix.os }}-${{ matrix.triplet }}-
       - name: Restore compiler cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: .cache/ccache
           key: compiler-${{ matrix.os }}-${{ matrix.triplet }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -95,7 +96,7 @@ jobs:
       - name: Cache Emscripten toolchain
         if: matrix.platform == 'browser'
         id: emsdk-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: ${{ runner.temp }}/emsdk
           key: emsdk-${{ runner.os }}-${{ runner.arch }}-${{ env.EMSDK_VERSION }}
@@ -108,6 +109,22 @@ jobs:
           fi
           "$RUNNER_TEMP/emsdk/emsdk" install "$EMSDK_VERSION"
           "$RUNNER_TEMP/emsdk/emsdk" activate "$EMSDK_VERSION"
+      - name: Restore WebAssembly Lua library
+        if: matrix.platform == 'browser'
+        id: wasm-lua-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: .cache/wasm-lua51
+          key: wasm-lua-${{ env.LUA_VERSION }}-emsdk-${{ env.EMSDK_VERSION }}-${{ hashFiles('browser/build-lua51.sh') }}
+      - name: Build Lua 5.1 for WebAssembly
+        if: matrix.platform == 'browser' && steps.wasm-lua-cache.outputs.cache-hit != 'true'
+        id: wasm-lua-build
+        run: |
+          source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
+          bash browser/build-lua51.sh .cache/wasm-lua51
+      - name: Validate WebAssembly Lua library
+        if: matrix.platform == 'browser'
+        run: test -s .cache/wasm-lua51/liblua.a
       - name: Configure and compile
         id: compile
         env:
@@ -124,6 +141,7 @@ jobs:
             unset CC CXX
             source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
             args+=(-DWASM=ON -DWASM_USE_WASM_EXCEPTIONS=OFF
+              -DOTCLIENT_WASM_LUA_LIBRARY="$GITHUB_WORKSPACE/.cache/wasm-lua51/liblua.a"
               -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE="$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
               -DVCPKG_OVERLAY_TRIPLETS="$GITHUB_WORKSPACE/browser/triplets"
               -DVCPKG_OVERLAY_PORTS="$GITHUB_WORKSPACE/browser/overlay-ports")
@@ -132,13 +150,19 @@ jobs:
           cmake --build build/platform --target otclient --parallel 2
       - name: Save Emscripten even when client compilation fails
         if: ${{ always() && steps.emsdk-install.outcome == 'success' && steps.emsdk-cache.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: ${{ runner.temp }}/emsdk
           key: emsdk-${{ runner.os }}-${{ runner.arch }}-${{ env.EMSDK_VERSION }}
+      - name: Save WebAssembly Lua library
+        if: ${{ always() && matrix.platform == 'browser' && steps.wasm-lua-cache.outputs.cache-hit != 'true' && steps.wasm-lua-build.outcome == 'success' }}
+        uses: actions/cache/save@v6
+        with:
+          path: .cache/wasm-lua51
+          key: wasm-lua-${{ env.LUA_VERSION }}-emsdk-${{ env.EMSDK_VERSION }}-${{ hashFiles('browser/build-lua51.sh') }}
       - name: Save dependency cache, including completed packages from failed builds
         if: ${{ always() && steps.baseline.outcome == 'success' && steps.dependencies.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: |
             .cache/vcpkg
@@ -146,7 +170,7 @@ jobs:
           key: deps-${{ matrix.os }}-${{ matrix.triplet }}-${{ hashFiles('vcpkg.json', 'browser/overlay-ports/**', 'browser/triplets/**') }}-${{ steps.compile.outcome == 'success' && 'complete-v1' || format('{0}-{1}', github.run_id, github.run_attempt) }}
       - name: Save compiler cache
         if: ${{ always() && steps.baseline.outcome == 'success' }}
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: .cache/ccache
           key: compiler-${{ matrix.os }}-${{ matrix.triplet }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -169,14 +193,14 @@ jobs:
           cp docs/platform-builds.md artifacts/NextGen-OTC/BUILD-NOTES.md
           tar -C artifacts -czf "NextGen-OTC-$PLATFORM.tar.gz" NextGen-OTC
       - name: Upload package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: NextGen-OTC-${{ matrix.platform }}-release
           path: NextGen-OTC-${{ matrix.platform }}.tar.gz
           if-no-files-found: error
       - name: Upload dependency diagnostics
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: diagnostics-${{ matrix.platform }}
           path: |

@@ -44,7 +44,7 @@ SpellListData < UIWidget
     anchors.top: parent.top
     margin-top: 1
     margin-left: 2
-    image-source: /assets/images/game/actionbar/border_activespell
+    image-source: /images/game/actionbar/border_activespell
     image-size: 32 32
     visible: false
     phantom: true

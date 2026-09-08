@@ -21,7 +21,7 @@ SpellAssignPreview < Panel
     phantom: true
     focusable: false
     visible: false
-    image-source: /assets/images/game/actionbar/slot-disabled
+    image-source: /images/game/actionbar/slot-disabled
     image-size: 32 32
 
   Label
@@ -71,7 +71,7 @@ SpellListLabel < Panel
     phantom: true
     focusable: false
     visible: false
-    image-source: /assets/images/game/actionbar/slot-disabled
+    image-source: /images/game/actionbar/slot-disabled
     image-size: 32 32
 
   UIWidget

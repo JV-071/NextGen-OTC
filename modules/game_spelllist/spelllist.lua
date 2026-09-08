@@ -867,7 +867,7 @@ local function getSpellsSortedByName()
 	return sorted
 end
 
-local VIRTUE_YELLOW_BORDER_IMAGE = "/assets/images/game/actionbar/border_activespell"
+local VIRTUE_YELLOW_BORDER_IMAGE = "/images/game/actionbar/border_activespell"
 
 local function spellMatchesVirtueBorder(spell)
 	if not spell then

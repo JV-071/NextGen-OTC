@@ -1,6 +1,6 @@
 ActionSlotV < UIActionSlot
   size: 34 34
-  image-source: /assets/images/game/actionbar/slot-actionbar-empty
+  image-source: /images/game/actionbar/slot-actionbar-empty
   anchors.left: parent.left
   anchors.top: prev.bottom
   margin-top: 3
@@ -58,7 +58,7 @@ ActionSlotV < UIActionSlot
     size: 32 32
     anchors.horizontalCenter: parent.horizontalCenter
     anchors.verticalCenter: parent.verticalCenter
-    image-source: /assets/images/game/actionbar/slot-disabled
+    image-source: /images/game/actionbar/slot-disabled
     image-size: 32 32
     visible: false
 
@@ -98,7 +98,7 @@ ActionSlotV < UIActionSlot
   UIWidget
     id: multiIcon
     size: 5 11
-    image-source: /assets/images/game/actionbar/marker-multiactionbutton
+    image-source: /images/game/actionbar/marker-multiactionbutton
     image-size: 5 11
     anchors.top: parent.top
     anchors.left: parent.left
@@ -125,7 +125,7 @@ ActionSlotV < UIActionSlot
     size: 32 32
     anchors.horizontalCenter: parent.horizontalCenter
     anchors.verticalCenter: parent.verticalCenter
-    image-source: /assets/images/game/actionbar/border_activespell
+    image-source: /images/game/actionbar/border_activespell
     image-size: 32 32
     visible: false
     phantom: true
@@ -184,7 +184,7 @@ UIWindow
 
   UIButton
     id: prevButton
-    image-source: /assets/images/game/actionbar/button-prev-up
+    image-source: /images/game/actionbar/button-prev-up
     image-clip: 0 0 17 17
     anchors.left: parent.left
     anchors.top: parent.top
@@ -202,7 +202,7 @@ UIWindow
 
   UIButton
     id: prevSkipButton
-    image-source: /assets/images/game/actionbar/button-skip-up
+    image-source: /images/game/actionbar/button-skip-up
     image-clip: 0 0 17 17
     anchors.left: prevButton.right
     anchors.top: prevButton.top
@@ -219,7 +219,7 @@ UIWindow
 
   UIButton
     id: nextButton
-    image-source: /assets/images/game/actionbar/button-prev-down
+    image-source: /images/game/actionbar/button-prev-down
     image-clip: 0 0 17 17
     anchors.right: nextSkipButton.left
     anchors.bottom: sideLockButton.top
@@ -237,7 +237,7 @@ UIWindow
 
   UIButton
     id: nextSkipButton
-    image-source: /assets/images/game/actionbar/button-skip-down
+    image-source: /images/game/actionbar/button-skip-down
     image-clip: 0 0 17 17
     anchors.right: parent.right
     anchors.bottom: sideLockButton.top

@@ -1,6 +1,6 @@
 MultiActionSubSlot < UIActionSlot
   size: 34 34
-  image-source: /assets/images/game/actionbar/slot-actionbar-empty
+  image-source: /images/game/actionbar/slot-actionbar-empty
   image-size: 34 34
   font: Verdana-8px-outline
   color: #ffffff
@@ -50,7 +50,7 @@ MultiActionSubSlot < UIActionSlot
     size: 32 32
     anchors.horizontalCenter: parent.horizontalCenter
     anchors.verticalCenter: parent.verticalCenter
-    image-source: /assets/images/game/actionbar/slot-disabled
+    image-source: /images/game/actionbar/slot-disabled
     image-size: 32 32
     visible: false
 
@@ -81,7 +81,7 @@ MultiActionSubSlot < UIActionSlot
     size: 32 32
     anchors.horizontalCenter: parent.horizontalCenter
     anchors.verticalCenter: parent.verticalCenter
-    image-source: /assets/images/game/actionbar/border_activespell
+    image-source: /images/game/actionbar/border_activespell
     image-size: 32 32
     visible: false
     phantom: true
@@ -90,7 +90,7 @@ MultiActionSubSlot < UIActionSlot
 slot-multi-action-bottom < HeadlessWindow
   id: multiActionPanel
   size: 67 116
-  image-source: /assets/images/game/actionbar/slot-multi-action-bottom
+  image-source: /images/game/actionbar/slot-multi-action-bottom
   draggable: false
   focusable: false
   @onEscape: modules.game_actionbar.closeCurrentMultiActionPanel()
@@ -115,7 +115,7 @@ slot-multi-action-bottom < HeadlessWindow
 LeftMultiAction < HeadlessWindow
   id: multiActionPanel
   size: 116 67
-  image-source: /assets/images/game/actionbar/slot-multi-action-left
+  image-source: /images/game/actionbar/slot-multi-action-left
   draggable: false
   focusable: false
   @onEscape: modules.game_actionbar.closeCurrentMultiActionPanel()
@@ -144,7 +144,7 @@ LeftMultiAction < HeadlessWindow
 RightMultiAction < HeadlessWindow
   id: multiActionPanel
   size: 116 67
-  image-source: /assets/images/game/actionbar/slot-multi-action-right
+  image-source: /images/game/actionbar/slot-multi-action-right
   draggable: false
   focusable: false
   @onEscape: modules.game_actionbar.closeCurrentMultiActionPanel()

@@ -44,7 +44,7 @@ local function ensureSlotMultiActions(slot)
 	return slot.multiActions
 end
 
-local MULTI_ICON_SOURCE = "/assets/images/game/actionbar/marker-multiactionbutton"
+local MULTI_ICON_SOURCE = "/images/game/actionbar/marker-multiactionbutton"
 local MULTI_ICON_SIZE = {
 	width = 5,
 	height = 11

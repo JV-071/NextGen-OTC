@@ -15,9 +15,7 @@ local currentDayTime = {
 }
 local LAYER_FLOOR_MIN = 0
 local LAYER_FLOOR_MAX = 15
-local MINIMAP_OTMM_PATH = "/assets/minimap/minimap.otmm"
 local MINIMAP_OTMM_FALLBACK_PATHS = {
-	"/assets/minimap/minimap.otmm",
 	"/minimap/minimap.otmm",
 	-- our prebuilt file lives at data/minimap.otmm, i.e. in the root of the virtual filesystem;
 	-- without this path the 7 MB of discovered map never loaded and the minimap started empty
