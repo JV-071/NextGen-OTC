@@ -607,9 +607,13 @@ void MapView::updateVisibleTiles()
         return;
 
     // clear current visible tiles cache
-    do {
-        m_floors[m_floorMin].cachedVisibleTiles.clear();
-    } while (++m_floorMin <= m_floorMax);
+    for (uint8_t z = m_floorMin; z <= m_floorMax; ++z)
+        m_floors[z].cachedVisibleTiles.clear();
+
+    // Mark an empty range until tiles are collected below. Using m_floorMin as
+    // the loop counter left it past the array when no tile was added, which
+    // could crash the next refresh after an AFK kick/relogin.
+    m_floorMin = m_floorMax + 1;
 
     m_lockedFirstVisibleFloor = m_floorViewMode == Otc::LOCKED ? m_posInfo.camera.z : -1;
 

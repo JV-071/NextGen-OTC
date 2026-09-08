@@ -88,7 +88,7 @@ void ProtocolGame::parseMessage(const InputMessagePtr& msg)
                 if (luaReadPos < opcodeStart) {
                     g_logger.error("[PROTO_TRACE] Lua rewound message at opcode 0x{:02X}: {} -> {}; aborting frame",
                         opcode, opcodeStart, luaReadPos);
-                    msg->setReadPos(msg->getMessageSize());
+                    msg->skipBytes(static_cast<uint16_t>(msg->getUnreadSize()));
                 }
                 continue;
             }
@@ -707,7 +707,9 @@ void ProtocolGame::parseMessage(const InputMessagePtr& msg)
                     g_logger.warning(
                         "[{}] Unhandled opcode 0x{:02X} ({}) with {} unread bytes; previous opcode: 0x{:02X} ({}); next bytes: {}",
                         g_game.getClientVersion(), opcode, opcode, unreadSize, prevOpcode, prevOpcode, hexDump.str());
-                    msg->setReadPos(msg->getMessageSize());
+                    // Message size excludes the protocol header, while readPos is
+                    // absolute. Skipping the unread body reaches eof() correctly.
+                    msg->skipBytes(static_cast<uint16_t>(unreadSize));
                     break;
                 }
             }
@@ -717,7 +719,7 @@ void ProtocolGame::parseMessage(const InputMessagePtr& msg)
             if (handlerReadPos < opcodeStart) {
                 g_logger.error("[PROTO_TRACE] parser rewound message at opcode 0x{:02X}: {} -> {}; aborting frame",
                     opcode, opcodeStart, handlerReadPos);
-                msg->setReadPos(msg->getMessageSize());
+                msg->skipBytes(static_cast<uint16_t>(msg->getUnreadSize()));
             }
             prevOpcode = opcode;
         }

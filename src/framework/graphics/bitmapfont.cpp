@@ -428,9 +428,9 @@ namespace {
     bool _utf8(const char* s, const char* e, uint32_t& cp, int& len) {
         if (s >= e)return false; unsigned char c0 = (unsigned char)s[0];
         if (c0 < 0x80) { cp = c0; len = 1; return true; }
-        if ((c0 & 0xE0) == 0xC0 && s + 1 <= e) { cp = ((c0 & 0x1F) << 6) | ((unsigned char)s[1] & 0x3F); len = 2; return true; }
-        if ((c0 & 0xF0) == 0xE0 && s + 2 <= e) { cp = ((c0 & 0x0F) << 12) | (((unsigned char)s[1] & 0x3F) << 6) | ((unsigned char)s[2] & 0x3F); len = 3; return true; }
-        if ((c0 & 0xF8) == 0xF0 && s + 3 <= e) { cp = ((c0 & 0x07) << 18) | (((unsigned char)s[1] & 0x3F) << 12) | (((unsigned char)s[2] & 0x3F) << 6) | ((unsigned char)s[3] & 0x3F); len = 4; return true; }
+        if ((c0 & 0xE0) == 0xC0 && s + 1 < e) { cp = ((c0 & 0x1F) << 6) | ((unsigned char)s[1] & 0x3F); len = 2; return true; }
+        if ((c0 & 0xF0) == 0xE0 && s + 2 < e) { cp = ((c0 & 0x0F) << 12) | (((unsigned char)s[1] & 0x3F) << 6) | ((unsigned char)s[2] & 0x3F); len = 3; return true; }
+        if ((c0 & 0xF8) == 0xF0 && s + 3 < e) { cp = ((c0 & 0x07) << 18) | (((unsigned char)s[1] & 0x3F) << 12) | (((unsigned char)s[2] & 0x3F) << 6) | ((unsigned char)s[3] & 0x3F); len = 4; return true; }
         cp = c0; len = 1; return true;
     }
     bool _isCJK(uint32_t cp) {
