@@ -44,10 +44,6 @@
       "platform": "windows | osx"
     },
     {
-      "name": "angle",
-      "platform": "windows"
-    },
-    {
       "name": "vulkan-headers",
       "platform": "windows"
     },
