@@ -592,15 +592,7 @@ void UIWidget::parseBaseStyle(const OTMLNodePtr& styleNode)
         } else if (node->tag() == "align-self") {
             setAlignSelf(parseAlignSelf(node->value<std::string>()));
         } else if (node->tag() == "overflow") {
-            auto v = node->value<std::string>();
-            stdext::tolower(v);
-            OverflowType type = OverflowType::Visible;
-            if (v == "hidden") type = OverflowType::Hidden;
-            else if (v == "scroll") type = OverflowType::Scroll;
-            else if (v == "auto") type = OverflowType::Auto;
-            else if (v == "clip") type = OverflowType::Clip;
-            setOverflow(type);
-            setClipping(type == OverflowType::Clip || type == OverflowType::Scroll || type == OverflowType::Hidden);
+            setOverflow(node->value<std::string>());
         } else if (node->tag() == "position") {
             auto v = node->value<std::string>();
             stdext::tolower(v);

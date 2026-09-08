@@ -480,6 +480,7 @@ public:
     AlignSelf getAlignSelf() const { return m_flexItem.alignSelf; }
     void setHtmlNode(const HtmlNodePtr& node) { m_htmlNode = node; }
     void setOverflow(OverflowType type);
+    void setOverflow(std::string type);
     void setPositionType(PositionType t) {
         m_positionType = t;
 
@@ -526,6 +527,7 @@ public:
     int getChildIndex(const UIWidgetPtr& child = nullptr) { return child ? (child->getParent().get() == this ? child->m_childIndex : -1) : m_childIndex; }
     auto getDisplay() { return m_displayType; }
     auto getFloat() { return m_floatType; }
+    auto getOverflow() { return m_overflowType; }
     auto getJustifyItems() { return m_JustifyItems; }
 
     UIWidgetPtr getVirtualParent() const;

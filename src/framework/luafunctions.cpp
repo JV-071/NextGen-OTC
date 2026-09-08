@@ -586,6 +586,8 @@ void Application::registerLuaFunctions()
     g_lua.bindClassMemberFunction<UIWidget>("setVisible", &UIWidget::setVisible);
     g_lua.bindClassMemberFunction<UIWidget>("setDisplay", &UIWidget::setDisplay);
     g_lua.bindClassMemberFunction<UIWidget>("getDisplay", &UIWidget::getDisplay);
+    g_lua.bindClassMemberFunction<UIWidget>("setOverflow", static_cast<void (UIWidget::*)(std::string)>(&UIWidget::setOverflow));
+    g_lua.bindClassMemberFunction<UIWidget>("getOverflow", &UIWidget::getOverflow);
     g_lua.bindClassMemberFunction<UIWidget>("setConditionIf", &UIWidget::setResultConditionIf);
     g_lua.bindClassMemberFunction<UIWidget>("setOn", &UIWidget::setOn);
     g_lua.bindClassMemberFunction<UIWidget>("setChecked", &UIWidget::setChecked);

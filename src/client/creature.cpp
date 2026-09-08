@@ -404,8 +404,8 @@ void Creature::internalDraw(Point dest, const Color& color)
 
         // outfit is a real creature
         if (m_outfit.isCreature()) {
-            if (m_outfit.hasMount()) {
-                dest -= getMountThingType()->getDisplacement() * g_drawPool.getScaleFactor();
+            if (const auto mountType = getMountThingType(); mountType) {
+                dest -= mountType->getDisplacement() * g_drawPool.getScaleFactor();
 
                 if (!replaceColorShader && hasMountShader()) {
                     g_drawPool.setShaderProgram(g_shaders.getShaderById(m_mountShaderId), true/*, [this]()-> void {
@@ -413,7 +413,7 @@ void Creature::internalDraw(Point dest, const Color& color)
                         m_mountShader->setUniformValue(ShaderManager::MOUNT_ID_UNIFORM, m_outfit.getMount());
                     }*/);
                 }
-                getMountThingType()->draw(dest, 0, m_numPatternX, 0, 0, getCurrentAnimationPhase(true), color);
+                mountType->draw(dest, 0, m_numPatternX, 0, 0, getCurrentAnimationPhase(true), color);
 
                 dest += getDisplacement() * g_drawPool.getScaleFactor();
             }
@@ -683,7 +683,8 @@ void Creature::updateWalkAnimation()
     if (!m_outfit.isCreature())
         return;
 
-    int footAnimPhases = m_outfit.hasMount() ? getMountThingType()->getAnimationPhases() : getAnimationPhases();
+    const auto mountType = getMountThingType();
+    int footAnimPhases = mountType ? mountType->getAnimationPhases() : getAnimationPhases();
     if (!g_game.getFeature(Otc::GameEnhancedAnimations) && footAnimPhases > 2) {
         --footAnimPhases;
     }
@@ -1206,8 +1207,8 @@ int Creature::getDisplacementX() const
     if (m_outfit.isItem())
         return 0;
 
-    if (m_outfit.hasMount())
-        return getMountThingType()->getDisplacementX();
+    if (const auto mountType = getMountThingType(); mountType)
+        return mountType->getDisplacementX();
 
     return Thing::getDisplacementX();
 }
@@ -1220,8 +1221,8 @@ int Creature::getDisplacementY() const
     if (m_outfit.isItem())
         return 0;
 
-    if (m_outfit.hasMount())
-        return getMountThingType()->getDisplacementY();
+    if (const auto mountType = getMountThingType(); mountType)
+        return mountType->getDisplacementY();
 
     return Thing::getDisplacementY();
 }
