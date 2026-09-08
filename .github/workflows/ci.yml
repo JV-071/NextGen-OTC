@@ -1,0 +1,197 @@
+name: CI
+
+on:
+  workflow_dispatch:
+    inputs:
+      include_windows_runtime:
+        description: Also upload data, modules and config with the Windows binaries
+        type: boolean
+        default: false
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "cmake/**"
+      - "android/**"
+      - "browser/**"
+      - "data/**"
+      - "mods/**"
+      - "modules/**"
+      - "vc18/**"
+      - "vcpkg.json"
+      - "CMakeLists.txt"
+      - "CMakePresets.json"
+      - "build_luajit_android.sh"
+      - "init.lua"
+      - "otclientrc.lua"
+      - "config.ini"
+      - ".github/workflows/**"
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "cmake/**"
+      - "android/**"
+      - "browser/**"
+      - "data/**"
+      - "mods/**"
+      - "modules/**"
+      - "vc18/**"
+      - "vcpkg.json"
+      - "CMakeLists.txt"
+      - "CMakePresets.json"
+      - "build_luajit_android.sh"
+      - "init.lua"
+      - "otclientrc.lua"
+      - "config.ini"
+      - ".github/workflows/**"
+
+concurrency:
+  group: nextgen-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Detect build scope
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      windows: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.windows }}
+      linux: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.linux }}
+      macos: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.macos }}
+      browser: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.browser }}
+      android: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.android }}
+    steps:
+      - name: Checkout repository
+        if: github.event_name != 'workflow_dispatch'
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed paths
+        id: filter
+        if: github.event_name != 'workflow_dispatch'
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        with:
+          filters: |
+            windows:
+              - "src/**"
+              - "tests/**"
+              - "cmake/**"
+              - "vc18/**"
+              - "vcpkg.json"
+              - "CMakeLists.txt"
+              - "CMakePresets.json"
+              - ".github/workflows/ci.yml"
+              - ".github/workflows/build-windows.yml"
+            linux:
+              - "src/**"
+              - "cmake/**"
+              - "data/**"
+              - "mods/**"
+              - "modules/**"
+              - "vcpkg.json"
+              - "CMakeLists.txt"
+              - "init.lua"
+              - "otclientrc.lua"
+              - "config.ini"
+              - ".github/workflows/ci.yml"
+              - ".github/workflows/build-platforms.yml"
+            macos:
+              - "src/**"
+              - "cmake/**"
+              - "data/**"
+              - "mods/**"
+              - "modules/**"
+              - "vcpkg.json"
+              - "CMakeLists.txt"
+              - "init.lua"
+              - "otclientrc.lua"
+              - "config.ini"
+              - ".github/workflows/ci.yml"
+              - ".github/workflows/build-platforms.yml"
+            browser:
+              - "src/**"
+              - "cmake/**"
+              - "browser/**"
+              - "data/**"
+              - "mods/**"
+              - "modules/**"
+              - "vcpkg.json"
+              - "CMakeLists.txt"
+              - "init.lua"
+              - "otclientrc.lua"
+              - ".github/workflows/ci.yml"
+              - ".github/workflows/build-platforms.yml"
+            android:
+              - "src/**"
+              - "cmake/**"
+              - "android/**"
+              - "data/**"
+              - "mods/**"
+              - "modules/**"
+              - "vcpkg.json"
+              - "CMakeLists.txt"
+              - "build_luajit_android.sh"
+              - "init.lua"
+              - "otclientrc.lua"
+              - ".github/workflows/ci.yml"
+              - ".github/workflows/build-android.yml"
+
+  tests-lua:
+    name: Lua tests
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    permissions:
+      contents: read
+    uses: ./.github/workflows/tests-lua.yml
+
+  build-windows:
+    name: Windows release, debug and solutions
+    needs: [changes, tests-lua]
+    if: needs.changes.outputs.windows == 'true' && needs.tests-lua.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    permissions:
+      contents: write
+    uses: ./.github/workflows/build-windows.yml
+    with:
+      include_runtime: ${{ inputs.include_windows_runtime || false }}
+
+  build-linux:
+    name: Linux release
+    needs: [changes, tests-lua]
+    if: needs.changes.outputs.linux == 'true' && needs.tests-lua.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    permissions:
+      contents: read
+    uses: ./.github/workflows/build-platforms.yml
+    with:
+      platform: linux
+
+  build-macos:
+    name: macOS release
+    needs: [changes, tests-lua]
+    if: needs.changes.outputs.macos == 'true' && needs.tests-lua.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    permissions:
+      contents: read
+    uses: ./.github/workflows/build-platforms.yml
+    with:
+      platform: macos
+
+  build-browser:
+    name: Browser release
+    needs: [changes, tests-lua]
+    if: needs.changes.outputs.browser == 'true' && needs.tests-lua.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    permissions:
+      contents: read
+    uses: ./.github/workflows/build-platforms.yml
+    with:
+      platform: browser
+
+  build-android:
+    name: Android release
+    needs: [changes, tests-lua]
+    if: needs.changes.outputs.android == 'true' && needs.tests-lua.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    permissions:
+      contents: read
+    uses: ./.github/workflows/build-android.yml

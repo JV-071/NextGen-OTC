@@ -7,24 +7,12 @@ on:
         description: Also upload data, modules and default config as a separate package
         type: boolean
         default: false
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-    paths:
-      - "src/**"
-      - "tests/**"
-      - "vcpkg.json"
-      - "CMakeLists.txt"
-      - "CMakePresets.json"
-      - ".github/workflows/build-windows.yml"
-  push:
-    branches: [main]
-    paths:
-      - "src/**"
-      - "tests/**"
-      - "vcpkg.json"
-      - "CMakeLists.txt"
-      - "CMakePresets.json"
-      - ".github/workflows/build-windows.yml"
+  workflow_call:
+    inputs:
+      include_runtime:
+        description: Also upload data, modules and default config as a separate package
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -265,10 +253,187 @@ jobs:
           name: NextGen-OTC-windows-release
           path: ${{ github.workspace }}/artifacts
 
+  variants:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - name: CMake Debug
+            type: cmake
+            os: windows-2022
+            configuration: Debug
+            triplet: x64-windows
+            cache_flavor: base
+            vcpkg_feature: ""
+            artifact: NextGen-OTC-windows-cmake-debug
+          - name: Solution Debug
+            type: solution
+            os: windows-2025-vs2026
+            configuration: Debug
+            triplet: x64-windows-static
+            cache_flavor: base
+            vcpkg_feature: ""
+            artifact: NextGen-OTC-windows-solution-debug
+          - name: Solution OpenGL
+            type: solution
+            os: windows-2025-vs2026
+            configuration: OpenGL
+            triplet: x64-windows-static
+            cache_flavor: base
+            vcpkg_feature: ""
+            artifact: NextGen-OTC-windows-solution-opengl
+          - name: Solution DirectX (ANGLE)
+            type: solution
+            os: windows-2025-vs2026
+            configuration: DirectX
+            triplet: x64-windows-static
+            cache_flavor: directx
+            vcpkg_feature: directx
+            artifact: NextGen-OTC-windows-solution-directx
+    env:
+      CMAKE_BUILD_PARALLEL_LEVEL: 2
+      VCPKG_MAX_CONCURRENCY: 2
+      VCPKG_BINARY_SOURCES: "clear;files,${{ github.workspace }}/.vcpkg-binary-cache,readwrite"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Read vcpkg baseline
+        id: baseline
+        shell: pwsh
+        run: |
+          $json = Get-Content vcpkg.json -Raw | ConvertFrom-Json
+          $commit = $json.'builtin-baseline'
+          if ($commit -notmatch '^[0-9a-f]{40}$') {
+            throw 'vcpkg builtin-baseline must be a full commit SHA.'
+          }
+          "commit=$commit" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          New-Item -ItemType Directory -Force -Path .vcpkg-binary-cache | Out-Null
+
+      - name: Restore compiled dependencies
+        id: dependencies
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            ${{ github.workspace }}/.vcpkg-binary-cache
+            ${{ github.workspace }}/vcpkg/downloads
+          key: vcpkg-windows-${{ matrix.triplet }}-${{ hashFiles('vcpkg.json') }}-${{ matrix.cache_flavor }}-variants-v1
+          restore-keys: |
+            vcpkg-windows-${{ matrix.triplet }}-${{ hashFiles('vcpkg.json') }}-base-
+            vcpkg-windows-${{ matrix.triplet }}-${{ hashFiles('vcpkg.json') }}-
+            vcpkg-windows-${{ matrix.triplet }}-
+            vcpkg-windows-x64-static-
+            vcpkg-windows-release-
+
+      - name: Compiler cache
+        if: matrix.type == 'cmake'
+        uses: hendrikmuhs/ccache-action@v1.2.23
+        with:
+          max-size: "1G"
+          variant: sccache
+          key: ccache-windows-debug
+          restore-keys: ccache-windows-debug
+
+      - name: Install pinned vcpkg
+        uses: lukka/run-vcpkg@b1a0dd252f06b9e25b3c022a9a03bd7a427fb6a2
+        with:
+          vcpkgDirectory: ${{ github.workspace }}/vcpkg
+          vcpkgGitCommitId: ${{ steps.baseline.outputs.commit }}
+          vcpkgJsonGlob: vcpkg.json
+
+      - name: Set up CMake and Ninja
+        if: matrix.type == 'cmake'
+        uses: lukka/get-cmake@v3.31.6
+
+      - name: Set up MSVC environment
+        if: matrix.type == 'cmake'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Verify Visual Studio 2026 v145 toolset
+        if: matrix.type == 'solution'
+        shell: pwsh
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $installationPath = & $vswhere -latest -prerelease -products '*' -version '[18.0,19.0)' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if ([string]::IsNullOrWhiteSpace($installationPath)) {
+            throw 'Visual Studio 2026 with the native C++ toolset is required by vc18/otclient.sln.'
+          }
+          $versionFile = Join-Path $installationPath 'VC/Auxiliary/Build/Microsoft.VCToolsVersion.default.txt'
+          $toolsetVersion = (Get-Content -LiteralPath $versionFile -Raw).Trim()
+          if ($toolsetVersion -notmatch '^14\.5') {
+            throw "The solution requires v145; found $toolsetVersion."
+          }
+
+      - name: Set up MSBuild
+        if: matrix.type == 'solution'
+        uses: microsoft/setup-msbuild@v3
+        with:
+          vs-prerelease: true
+          vs-version: "[18.0,19.0)"
+
+      - name: Build CMake Debug
+        if: matrix.type == 'cmake'
+        shell: pwsh
+        run: |
+          cmake --preset windows-debug -DTOGGLE_BIN_FOLDER=ON -DOPTIONS_ENABLE_IPO=OFF -DOTCLIENT_BUILD_TESTS=OFF
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build --preset windows-debug --parallel 2
+          exit $LASTEXITCODE
+
+      - name: Build Visual Studio solution
+        if: matrix.type == 'solution'
+        shell: pwsh
+        run: |
+          $outDir = Join-Path $env:GITHUB_WORKSPACE "artifacts/${{ matrix.configuration }}"
+          New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+          msbuild.exe vc18/otclient.sln `
+            /m:2 `
+            /p:Configuration=${{ matrix.configuration }} `
+            /p:Platform=x64 `
+            /p:VcpkgEnableManifest=true `
+            /p:VcpkgRoot="$env:VCPKG_ROOT" `
+            /p:VcpkgManifestRoot="$env:GITHUB_WORKSPACE" `
+            /p:VcpkgManifestFeatures="${{ matrix.vcpkg_feature }}" `
+            /p:OutDir="$outDir\\" `
+            /p:GITHUB_WORKSPACE="$env:GITHUB_WORKSPACE"
+
+      - name: Save completed dependency work
+        if: ${{ always() && steps.baseline.outcome == 'success' && steps.dependencies.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ${{ github.workspace }}/.vcpkg-binary-cache
+            ${{ github.workspace }}/vcpkg/downloads
+          key: vcpkg-windows-${{ matrix.triplet }}-${{ hashFiles('vcpkg.json') }}-${{ matrix.cache_flavor }}-variants-v1
+
+      - name: Stage CMake Debug artifact
+        if: matrix.type == 'cmake'
+        shell: pwsh
+        run: |
+          $source = Join-Path $env:GITHUB_WORKSPACE 'build/windows-debug/bin'
+          if (-not (Test-Path -LiteralPath (Join-Path $source 'otclient.exe'))) {
+            throw "CMake Debug executable was not found in $source."
+          }
+          New-Item -ItemType Directory -Force -Path artifacts/CMakeDebug | Out-Null
+          Copy-Item -LiteralPath "$source/otclient.exe" -Destination artifacts/CMakeDebug/NextGen-OTC-Debug.exe
+          Get-ChildItem -LiteralPath $source -File | Where-Object Extension -In '.pdb', '.ilk', '.dll' | Copy-Item -Destination artifacts/CMakeDebug
+
+      - name: Upload variant artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.type == 'cmake' && 'artifacts/CMakeDebug' || format('artifacts/{0}', matrix.configuration) }}
+          if-no-files-found: error
+          retention-days: 14
+
   release:
     name: Publish "latest" release
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-    needs: build
+    needs: [build, variants]
     runs-on: ubuntu-latest
     permissions:
       contents: write
