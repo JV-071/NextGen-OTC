@@ -50,19 +50,12 @@
     {
       "name": "vulkan-memory-allocator",
       "platform": "windows"
+    },
+    {
+      "name": "angle",
+      "platform": "windows"
     }
   ],
-  "features": {
-    "directx": {
-      "description": "ANGLE/EGL dependencies used by the Visual Studio DirectX solution configuration.",
-      "dependencies": [
-        {
-          "name": "angle",
-          "platform": "windows"
-        }
-      ]
-    }
-  },
   "overrides": [
     {
       "name": "bshoshany-thread-pool",

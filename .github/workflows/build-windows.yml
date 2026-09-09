@@ -274,8 +274,8 @@ jobs:
             os: windows-2025-vs2026
             configuration: DirectX
             triplet: x64-windows-static
-            cache_flavor: directx
-            vcpkg_feature: directx
+            cache_flavor: base
+            vcpkg_feature: ""
             artifact: NextGen-OTC-windows-solution-directx
     env:
       CMAKE_BUILD_PARALLEL_LEVEL: 2
