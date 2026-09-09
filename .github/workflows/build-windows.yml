@@ -467,7 +467,7 @@ jobs:
           title="Latest build ($(date -u +%Y-%m-%d), ${GITHUB_SHA::7})"
           notes="Automatic build of the latest \`main\` commit ${GITHUB_SHA::7}.
 
-Binary-only update: executable, matching debug symbols and any required DLLs. Install into an existing NextGen client with init.lua, data, modules and mods. Game assets remain separate. For a fresh installation, dispatch CI with include_windows_runtime enabled."
+          Binary-only update: executable, matching debug symbols and any required DLLs. Install into an existing NextGen client with init.lua, data, modules and mods. Game assets remain separate. For a fresh installation, dispatch CI with include_windows_runtime enabled."
           if gh release view latest -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release edit latest -R "$GITHUB_REPOSITORY" --prerelease --title "$title" --notes "$notes"
           else
