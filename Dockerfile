@@ -5,7 +5,8 @@ RUN export DEBIAN_FRONTEND=noninteractive \
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
 	git cmake curl zip unzip tar automake ca-certificates build-essential python3 \
-	libglew-dev libx11-dev autoconf autoconf-archive libtool pkg-config tzdata libssl3 \
+	ninja-build libasound2-dev libgl1-mesa-dev libglew-dev libglu1-mesa-dev \
+	libx11-dev libxext-dev autoconf autoconf-archive libtool pkg-config tzdata libssl3 \
 	&& dpkg-reconfigure --frontend noninteractive tzdata \
 	&& apt-get clean && apt-get autoclean
 
