@@ -62,4 +62,8 @@ assert(cyclopedia:find('not ensureCyclopediaWindow()', 1, true),
 assert(cyclopedia:find('Window loaded on demand in %d ms%s', 1, true),
   'Cyclopedia lazy window load is not measurable')
 
+local helperModule = read('modules/game_helper/game_helper.otmod')
+assert(not helperModule:find('%-%s*game_cyclopedia'),
+  'game_helper must not force-load the optional Cyclopedia module')
+
 print('Options and packaging contract checks passed')
