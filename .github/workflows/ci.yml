@@ -159,7 +159,7 @@ jobs:
       include_runtime: ${{ inputs.include_windows_runtime || false }}
 
   build-linux:
-    name: Linux release
+    name: Linux release and debug
     needs: [changes, tests-lua]
     if: needs.changes.outputs.linux == 'true' && needs.tests-lua.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     permissions:

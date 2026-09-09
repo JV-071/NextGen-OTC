@@ -1,13 +1,6 @@
 name: Reusable platform build
 
 on:
-  workflow_dispatch:
-    inputs:
-      platform:
-        description: Platform to build
-        type: choice
-        default: all
-        options: [all, linux, macos, browser]
   workflow_call:
     inputs:
       platform:
@@ -25,7 +18,7 @@ jobs:
   build:
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(inputs.platform == 'linux' && '{"include":[{"platform":"linux","os":"ubuntu-24.04","triplet":"x64-linux"}]}' || inputs.platform == 'macos' && '{"include":[{"platform":"macos","os":"macos-15","triplet":"arm64-osx"}]}' || inputs.platform == 'browser' && '{"include":[{"platform":"browser","os":"ubuntu-24.04","triplet":"wasm32-emscripten-pthread"}]}' || '{"include":[{"platform":"linux","os":"ubuntu-24.04","triplet":"x64-linux"},{"platform":"macos","os":"macos-15","triplet":"arm64-osx"},{"platform":"browser","os":"ubuntu-24.04","triplet":"wasm32-emscripten-pthread"}]}') }}
+      matrix: ${{ fromJSON(inputs.platform == 'linux' && '{"include":[{"platform":"linux","build_type":"Release","artifact":"NextGen-OTC-linux-release","os":"ubuntu-24.04","triplet":"x64-linux"},{"platform":"linux","build_type":"Debug","artifact":"NextGen-OTC-linux-debug","os":"ubuntu-24.04","triplet":"x64-linux"}]}' || inputs.platform == 'macos' && '{"include":[{"platform":"macos","build_type":"Release","artifact":"NextGen-OTC-macos-release","os":"macos-15","triplet":"arm64-osx"}]}' || inputs.platform == 'browser' && '{"include":[{"platform":"browser","build_type":"Release","artifact":"NextGen-OTC-browser-release","os":"ubuntu-24.04","triplet":"wasm32-emscripten-pthread"}]}' || '{"include":[{"platform":"linux","build_type":"Release","artifact":"NextGen-OTC-linux-release","os":"ubuntu-24.04","triplet":"x64-linux"},{"platform":"linux","build_type":"Debug","artifact":"NextGen-OTC-linux-debug","os":"ubuntu-24.04","triplet":"x64-linux"},{"platform":"macos","build_type":"Release","artifact":"NextGen-OTC-macos-release","os":"macos-15","triplet":"arm64-osx"},{"platform":"browser","build_type":"Release","artifact":"NextGen-OTC-browser-release","os":"ubuntu-24.04","triplet":"wasm32-emscripten-pthread"}]}') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 180
     defaults:
@@ -129,12 +122,16 @@ jobs:
         id: compile
         env:
           PLATFORM: ${{ matrix.platform }}
+          BUILD_TYPE: ${{ matrix.build_type }}
           TRIPLET: ${{ matrix.triplet }}
         run: |
-          args=(-DCMAKE_BUILD_TYPE=Release -DTOGGLE_BIN_FOLDER=ON -DBUILD_STATIC_LIBRARY=ON
+          args=(-DCMAKE_BUILD_TYPE="$BUILD_TYPE" -DTOGGLE_BIN_FOLDER=ON -DBUILD_STATIC_LIBRARY=ON
             -DOPTIONS_ENABLE_CCACHE=ON -DOPTIONS_ENABLE_SCCACHE=OFF -DOPTIONS_ENABLE_IPO=OFF
             -DOTCLIENT_BUILD_TESTS=OFF -DTOGGLE_PRE_COMPILED_HEADER=OFF -DVCPKG_TARGET_TRIPLET="$TRIPLET"
             -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake")
+          if [ "$PLATFORM" = linux ] && [ "$BUILD_TYPE" = Debug ]; then
+            args+=(-DDEBUG_LOG=ON -DSPEED_UP_BUILD_UNITY=OFF)
+          fi
           if [ "$PLATFORM" = browser ]; then
             # Non-CMake ports such as OpenSSL also read CC/CXX from the
             # environment. Native GCC cannot accept wasm atomics flags.
@@ -180,6 +177,7 @@ jobs:
       - name: Package client and runtime files
         env:
           PLATFORM: ${{ matrix.platform }}
+          ARTIFACT: ${{ matrix.artifact }}
         run: |
           mkdir -p artifacts/NextGen-OTC
           if [ "$PLATFORM" = browser ]; then
@@ -191,12 +189,14 @@ jobs:
             cp -a init.lua config.ini otclientrc.lua cacert.pem data modules mods artifacts/NextGen-OTC/
           fi
           cp docs/platform-builds.md artifacts/NextGen-OTC/BUILD-NOTES.md
-          tar -C artifacts -czf "NextGen-OTC-$PLATFORM.tar.gz" NextGen-OTC
+          # Build output may contain diagnostic logs. Runtime packages must not.
+          find artifacts/NextGen-OTC -type f -name '*.log' -delete
+          tar -C artifacts -czf "$ARTIFACT.tar.gz" NextGen-OTC
       - name: Upload package
         uses: actions/upload-artifact@v7
         with:
-          name: NextGen-OTC-${{ matrix.platform }}-release
-          path: NextGen-OTC-${{ matrix.platform }}.tar.gz
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}.tar.gz
           if-no-files-found: error
       - name: Upload dependency diagnostics
         if: failure()

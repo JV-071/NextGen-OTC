@@ -1,12 +1,6 @@
 name: Build - Windows
 
 on:
-  workflow_dispatch:
-    inputs:
-      include_runtime:
-        description: Also upload data, modules and default config as a separate package
-        type: boolean
-        default: false
   workflow_call:
     inputs:
       include_runtime:
@@ -27,7 +21,7 @@ env:
 jobs:
   build:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
-    name: windows-2022-release
+    name: CMake Release
     runs-on: windows-2022
 
     concurrency:
@@ -208,6 +202,7 @@ jobs:
               throw 'Matching otclient.pdb not found beside the executable.'
             }
           }
+          Get-ChildItem -LiteralPath $artifactDir -Recurse -File -Filter '*.log' | Remove-Item -Force
 
       - name: Prepare optional runtime package
         if: ${{ inputs.include_runtime }}
@@ -397,6 +392,7 @@ jobs:
             /p:VcpkgRoot="$env:VCPKG_ROOT" `
             /p:VcpkgManifestRoot="$env:GITHUB_WORKSPACE" `
             /p:VcpkgManifestFeatures="${{ matrix.vcpkg_feature }}" `
+            /p:RunProtoCompile=true `
             /p:OutDir="$outDir\\" `
             /p:GITHUB_WORKSPACE="$env:GITHUB_WORKSPACE"
 
@@ -471,7 +467,7 @@ jobs:
           title="Latest build ($(date -u +%Y-%m-%d), ${GITHUB_SHA::7})"
           notes="Automatic build of the latest \`main\` commit ${GITHUB_SHA::7}.
 
-          Binary-only update: executable, matching debug symbols and any required DLLs. Install into an existing NextGen client with init.lua, data, modules and mods. Game assets remain separate. For a fresh installation, the optional runtime package can be generated with workflow_dispatch (include_runtime)."
+Binary-only update: executable, matching debug symbols and any required DLLs. Install into an existing NextGen client with init.lua, data, modules and mods. Game assets remain separate. For a fresh installation, dispatch CI with include_windows_runtime enabled."
           if gh release view latest -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release edit latest -R "$GITHUB_REPOSITORY" --prerelease --title "$title" --notes "$notes"
           else
