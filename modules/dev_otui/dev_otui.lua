@@ -48,6 +48,7 @@ local pickerCallback = nil
 local pickerPreview = false -- picker shows a live sample of the highlighted item
 local fileCache = nil      -- project's .otui list (scanning is expensive)
 local styleCache = nil     -- style palette; depends on the open file
+local discardConfirmWindow = nil
 
 local AUTO_RELOAD_INTERVAL = 300
 local MAX_TREE_DEPTH = 12
@@ -842,7 +843,56 @@ end
 
 -- ============================================================ stage / loading
 
-function closeStage()
+local function hasPendingEdits()
+  for _, row in ipairs(propRows) do
+    if row.pending or row.removed then
+      return true
+    end
+    if not row.readOnly and row.edit and not row.edit:isDestroyed() and
+        row.edit:getText() ~= row.original then
+      return true
+    end
+  end
+  return false
+end
+
+local function closeDiscardConfirm()
+  if discardConfirmWindow and not discardConfirmWindow:isDestroyed() then
+    discardConfirmWindow:destroy()
+  end
+  discardConfirmWindow = nil
+end
+
+local function confirmDiscardPending(action)
+  if not hasPendingEdits() then
+    action()
+    return
+  end
+
+  closeDiscardConfirm()
+  discardConfirmWindow = displayGeneralBox('Discard preview changes?',
+    'There are unsaved preview changes. Continuing will discard them. Continue?', {
+      {
+        text = 'Yes',
+        callback = function()
+          closeDiscardConfirm()
+          action()
+        end
+      },
+      {
+        text = 'No',
+        callback = closeDiscardConfirm
+      },
+      anchor = AnchorHorizontalCenter
+    })
+end
+
+function closeStage(discardPending)
+  if not discardPending and hasPendingEdits() then
+    confirmDiscardPending(function() closeStage(true) end)
+    return false
+  end
+
   if stage and not stage:isDestroyed() then stage:destroy() end
   stage = nil
   selectedWidget = nil
@@ -861,6 +911,7 @@ function closeStage()
   if hoverBox and not hoverBox:isDestroyed() then hoverBox:hide() end
   if resizeHandle and not resizeHandle:isDestroyed() then resizeHandle:hide() end
   clearGuides()
+  return true
 end
 
 -- Builds the showcase for style-only files: a live sample of each style with
@@ -941,7 +992,7 @@ local function loadInto(path, keepPath)
     return false
   end
 
-  closeStage()
+  closeStage(true)
 
   stage = g_ui.createWidget('UIWidget', rootWidget)
   stage:setId('otuiStage')
@@ -995,7 +1046,12 @@ local function loadInto(path, keepPath)
   return true
 end
 
-function loadTarget()
+function loadTarget(discardPending)
+  if not discardPending and hasPendingEdits() then
+    confirmDiscardPending(function() loadTarget(true) end)
+    return
+  end
+
   local path = normalizePath(editorWindow:recursiveGetChildById('pathEdit'):getText())
   if not path then
     status('Enter the path of the .otui file.', true)
@@ -1007,9 +1063,13 @@ function loadTarget()
   end
 end
 
-function reloadTarget()
+function reloadTarget(discardPending)
   if not targetPath then
     status('Load a file first.', true)
+    return
+  end
+  if not discardPending and hasPendingEdits() then
+    confirmDiscardPending(function() reloadTarget(true) end)
     return
   end
   loadInto(targetPath, selectedPath)
@@ -1024,6 +1084,10 @@ local function watchTick()
   local time = g_resources.getFileTime(targetPath)
   if time > targetFileTime then
     targetFileTime = time
+    if hasPendingEdits() then
+      status('The file changed on disk while preview edits are pending. Reload manually to choose whether to discard them.', true)
+      return
+    end
     loadInto(targetPath, selectedPath)
   end
 end
@@ -2382,7 +2446,8 @@ function terminate()
 
   closePicker()
   closeGallery()
-  closeStage()
+  closeDiscardConfirm()
+  closeStage(true)
 
   clearGuides()
   for _, widget in ipairs({ selectionBox, hoverBox, resizeHandle, captureLayer }) do

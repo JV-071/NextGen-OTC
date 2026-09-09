@@ -33,6 +33,18 @@ loadScript('modules/dev_otui/dev_otui.lua')
 init()
 assert(selfTest(), 'OTUI editor self-test failed')
 
+-- Closing, loading, reloading, and file watching must not silently discard
+-- edits that only exist in the live preview/property panel.
+local editorFile = assert(io.open('modules/dev_otui/dev_otui.lua', 'rb'))
+local editorSource = editorFile:read('*a')
+editorFile:close()
+assert(editorSource:find('local function hasPendingEdits()', 1, true),
+  'OTUI editor has no pending-edit detector')
+assert(editorSource:find("displayGeneralBox('Discard preview changes?'", 1, true),
+  'OTUI editor has no discard confirmation')
+assert(editorSource:find('The file changed on disk while preview edits are pending.', 1, true),
+  'OTUI auto-reload may silently discard preview edits')
+
 -- Preserve CRLF, comments, multiline callbacks, and a missing final newline.
 for _, eol in ipairs({ '\n', '\r\n' }) do
   for _, trailing in ipairs({ '', eol }) do
