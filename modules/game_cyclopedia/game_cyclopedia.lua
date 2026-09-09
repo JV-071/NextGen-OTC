@@ -668,6 +668,9 @@ ensureCyclopediaWindow = function()
 		return true
 	end
 
+	local startedAt = g_clock.millis()
+	local memoryBefore = g_platform.getMemoryUsage()
+
 	ensureCyclopediaStyles()
 	controllerCyclopedia:loadUI()
 
@@ -705,6 +708,17 @@ ensureCyclopediaWindow = function()
 		bossSlot = { obj = bossSlot, func = showBossSlot },
 		magicalArchives = { obj = magicalArchives, func = showMagicalArchives }
 	}
+
+	local elapsedMs = g_clock.millis() - startedAt
+	local memoryAfter = g_platform.getMemoryUsage()
+	local memoryText = ""
+
+	if memoryBefore > 0 and memoryAfter > 0 then
+		memoryText = string.format(", process working-set delta %.1f MB",
+			(memoryAfter - memoryBefore) / (1024 * 1024))
+	end
+
+	g_logger.info(string.format("[Cyclopedia] Window loaded on demand in %d ms%s", elapsedMs, memoryText))
 
 	return true
 end

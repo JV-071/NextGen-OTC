@@ -59,5 +59,7 @@ assert(eagerUi and onInit and eagerUi > onInit,
   'Cyclopedia window path must be registered after the eager Controller init phase')
 assert(cyclopedia:find('not ensureCyclopediaWindow()', 1, true),
   'Cyclopedia window is not loaded on first use')
+assert(cyclopedia:find('Window loaded on demand in %d ms%s', 1, true),
+  'Cyclopedia lazy window load is not measurable')
 
 print('Options and packaging contract checks passed')
