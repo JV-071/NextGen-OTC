@@ -52,4 +52,12 @@ local sharedIdentifier = assert(io.open('data/things/assets.json.sha256', 'rb'),
   'shared asset identifier is missing')
 sharedIdentifier:close()
 
+local cyclopedia = read('modules/game_cyclopedia/game_cyclopedia.lua')
+local eagerUi = cyclopedia:find('controllerCyclopedia:setUI("game_cyclopedia")', 1, true)
+local onInit = cyclopedia:find('function controllerCyclopedia:onInit()', 1, true)
+assert(eagerUi and onInit and eagerUi > onInit,
+  'Cyclopedia window path must be registered after the eager Controller init phase')
+assert(cyclopedia:find('not ensureCyclopediaWindow()', 1, true),
+  'Cyclopedia window is not loaded on first use')
+
 print('Options and packaging contract checks passed')

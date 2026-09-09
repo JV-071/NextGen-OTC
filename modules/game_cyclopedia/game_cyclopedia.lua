@@ -475,6 +475,8 @@ local tabStack = {}
 local previousType
 local windowTypes = {}
 local magicalArchives
+local ensureCyclopediaWindow
+local cyclopediaStylesImported = false
 local cyclopediaShortcutHighlightActive = false
 local bosstiaryShortcutHighlightActive = false
 local CLIENT_EVENT_TYPE_BESTIARY = 6
@@ -642,11 +644,7 @@ function Cyclopedia.onResourceBalance(resourceType)
 end
 
 function toggle(defaultWindow)
-	if not controllerCyclopedia.ui then
-		return
-	end
-
-	if controllerCyclopedia.ui:isVisible() then
+	if controllerCyclopedia.ui and controllerCyclopedia.ui:isVisible() then
 		return hide()
 	end
 
@@ -655,9 +653,66 @@ end
 
 controllerCyclopedia = Controller:new()
 
-controllerCyclopedia:setUI("game_cyclopedia")
+local function ensureCyclopediaStyles()
+	if cyclopediaStylesImported then
+		return
+	end
+
+	g_ui.importStyle("cyclopedia_widgets")
+	g_ui.importStyle("cyclopedia_pages")
+	cyclopediaStylesImported = true
+end
+
+ensureCyclopediaWindow = function()
+	if controllerCyclopedia.ui then
+		return true
+	end
+
+	ensureCyclopediaStyles()
+	controllerCyclopedia:loadUI()
+
+	if not controllerCyclopedia.ui then
+		g_logger.error("[Cyclopedia] Unable to load the Cyclopedia window")
+		return false
+	end
+
+	contentContainer = controllerCyclopedia.ui:recursiveGetChildById("contentContainer")
+	buttonSelection = controllerCyclopedia.ui:recursiveGetChildById("buttonSelection")
+
+	if not contentContainer or not buttonSelection then
+		g_logger.error("[Cyclopedia] Required window containers are missing")
+		controllerCyclopedia:destroyUI()
+		return false
+	end
+
+	items = buttonSelection:recursiveGetChildById("items")
+	bestiary = buttonSelection:recursiveGetChildById("bestiary")
+	charms = buttonSelection:recursiveGetChildById("charms")
+	map = buttonSelection:recursiveGetChildById("map")
+	houses = buttonSelection:recursiveGetChildById("houses")
+	character = buttonSelection:recursiveGetChildById("character")
+	bosstiary = buttonSelection:recursiveGetChildById("bosstiary")
+	bossSlot = buttonSelection:recursiveGetChildById("bossSlot")
+	magicalArchives = buttonSelection:recursiveGetChildById("magicalArchives")
+	windowTypes = {
+		items = { obj = items, func = showItems },
+		bestiary = { obj = bestiary, func = showBestiary },
+		charms = { obj = charms, func = showCharms },
+		map = { obj = map, func = showMap },
+		houses = { obj = houses, func = showHouse },
+		character = { obj = character, func = showCharacter },
+		bosstiary = { obj = bosstiary, func = showBosstiary },
+		bossSlot = { obj = bossSlot, func = showBossSlot },
+		magicalArchives = { obj = magicalArchives, func = showMagicalArchives }
+	}
+
+	return true
+end
 
 function controllerCyclopedia:onInit()
+	-- Register the UI path only after Controller:init's eager-load phase. The
+	-- window is created on first use while protocol handlers remain resident.
+	controllerCyclopedia:setUI("game_cyclopedia")
 	Cyclopedia.storedTrackerData = {}
 	Cyclopedia.storedBosstiaryTrackerData = {}
 
@@ -675,6 +730,7 @@ end
 
 function controllerCyclopedia:onGameStart()
 	if g_game.getClientVersion() >= 1310 then
+		ensureCyclopediaStyles()
 		CyclopediaButton = modules.game_mainpanel.addToggleButton("CyclopediaButton", tr("Open Cyclopedia Window"), "/images/options/button_cyclopedia", Cyclopedia.openFromShortcutButton, false, 7)
 		ButtonBossSlot = modules.game_mainpanel.addToggleButton("bossSlot", tr("Open Boss Slots Dialog"), "/images/options/button_boss_slot", function()
 			toggle("bossSlot")
@@ -687,58 +743,6 @@ function controllerCyclopedia:onGameStart()
 		ensureCyclopediaShortcutHighlightWidget()
 		ensureBosstiaryShortcutHighlightWidget()
 
-		contentContainer = controllerCyclopedia.ui:recursiveGetChildById("contentContainer")
-		buttonSelection = controllerCyclopedia.ui:recursiveGetChildById("buttonSelection")
-		items = buttonSelection:recursiveGetChildById("items")
-		bestiary = buttonSelection:recursiveGetChildById("bestiary")
-		charms = buttonSelection:recursiveGetChildById("charms")
-		map = buttonSelection:recursiveGetChildById("map")
-		houses = buttonSelection:recursiveGetChildById("houses")
-		character = buttonSelection:recursiveGetChildById("character")
-		bosstiary = buttonSelection:recursiveGetChildById("bosstiary")
-		bossSlot = buttonSelection:recursiveGetChildById("bossSlot")
-		magicalArchives = buttonSelection:recursiveGetChildById("magicalArchives")
-		windowTypes = {
-			items = {
-				obj = items,
-				func = showItems
-			},
-			bestiary = {
-				obj = bestiary,
-				func = showBestiary
-			},
-			charms = {
-				obj = charms,
-				func = showCharms
-			},
-			map = {
-				obj = map,
-				func = showMap
-			},
-			houses = {
-				obj = houses,
-				func = showHouse
-			},
-			character = {
-				obj = character,
-				func = showCharacter
-			},
-			bosstiary = {
-				obj = bosstiary,
-				func = showBosstiary
-			},
-			bossSlot = {
-				obj = bossSlot,
-				func = showBossSlot
-			},
-			magicalArchives = {
-				obj = magicalArchives,
-				func = showMagicalArchives
-			}
-		}
-
-		g_ui.importStyle("cyclopedia_widgets")
-		g_ui.importStyle("cyclopedia_pages")
 		controllerCyclopedia:registerEvents(g_game, {
 			onBosstiaryEntryChanged = Cyclopedia.onBosstiaryEntryChanged,
 			onClientEvent = Cyclopedia.onClientEvent,
@@ -1200,7 +1204,7 @@ function resetCyclopediaTabs()
 end
 
 function show(defaultWindow)
-	if not controllerCyclopedia.ui or not CyclopediaButton then
+	if not CyclopediaButton or not ensureCyclopediaWindow() then
 		return
 	end
 
