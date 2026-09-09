@@ -8,11 +8,11 @@ runtime modules; they do not substitute executables from another fork.
 | Target | Output | Runtime requirement / validation still needed |
 | --- | --- | --- |
 | Windows | `NextGen-OTC-windows-release` (binary + symbols) | Install over matching NextGen runtime files; optional `include_runtime` manual input uploads those separately |
-| Windows Server | Existing full-package workflow | Modern Windows Server with GUI and a suitable OpenGL driver; test the target machine/RDP session |
+| Windows Server | Same Windows artifacts | Windows Server 2016 or newer with Desktop Experience and a suitable graphics driver; validate the intended RDP session |
 | Linux x64 | `NextGen-OTC-linux-release` | Ubuntu 24.04-compatible environment; OpenGL, GLEW, X11 and audio system libraries |
 | macOS arm64 | `NextGen-OTC-macos-release` | XQuartz: NextGen currently uses X11/OpenGL, not CrystalOTC's Cocoa/Metal backend |
 | Android | `NextGen-OTC-android-release` | Four ABIs from Gradle; development-signed APK, not a store release |
-| Browser (build currently blocked) | Intended: `NextGen-OTC-browser-release` | Lua WebAssembly library integration remains unresolved; subsequently requires COOP/COEP and WebSocket-compatible game transport |
+| Browser | `NextGen-OTC-browser-release` | Requires an HTTP origin with COOP/COEP and a WebSocket-compatible game transport; compilation success is not runtime validation |
 
 The workflow configuration is not proof of a working runtime. Confirm successful
 compilation and test startup, login, UI, sound and gameplay on each target.

@@ -48,10 +48,6 @@
       "platform": "windows"
     },
     {
-      "name": "vulkan-memory-allocator",
-      "platform": "windows"
-    },
-    {
       "name": "angle",
       "platform": "windows"
     }

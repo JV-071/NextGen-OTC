@@ -136,7 +136,11 @@ function terminate()
 	})
 
 	if eventScheduleButton then
-		eventScheduleButton:destroy()
+		-- game_mainpanel owns the button widget and may destroy its children
+		-- before this module is terminated. Do not destroy the same widget twice.
+		if not eventScheduleButton:isDestroyed() then
+			eventScheduleButton:destroy()
+		end
 
 		eventScheduleButton = nil
 	end

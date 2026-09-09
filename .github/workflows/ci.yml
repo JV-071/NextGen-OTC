@@ -64,6 +64,7 @@ jobs:
       contents: read
     outputs:
       windows: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.windows }}
+      windows_server: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.windows_server }}
       linux: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.linux }}
       macos: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.macos }}
       browser: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.browser }}
@@ -92,6 +93,15 @@ jobs:
               - "CMakePresets.json"
               - ".github/workflows/ci.yml"
               - ".github/workflows/build-windows.yml"
+            windows_server:
+              - "src/**"
+              - "tests/**"
+              - "cmake/**"
+              - "vcpkg.json"
+              - "CMakeLists.txt"
+              - "CMakePresets.json"
+              - ".github/workflows/ci.yml"
+              - ".github/workflows/build-windows-server.yml"
             linux:
               - "src/**"
               - "cmake/**"
@@ -172,6 +182,14 @@ jobs:
     uses: ./.github/workflows/build-windows.yml
     with:
       include_runtime: ${{ inputs.include_windows_runtime || false }}
+
+  build-windows-server:
+    name: Windows Server 2016+
+    needs: [changes, tests-lua]
+    if: needs.changes.outputs.windows_server == 'true' && needs.tests-lua.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    permissions:
+      contents: read
+    uses: ./.github/workflows/build-windows-server.yml
 
   build-linux:
     name: Linux release and debug

@@ -815,27 +815,30 @@ target_compile_definitions(
 
 if(MSVC)
 
-  # Windows Server 2012 is based on Windows 8. Keep the portable Windows
-  # artifacts usable on Server 2012 and later, including RDP sessions.
+  # Leave ordinary desktop builds on the SDK default. Dedicated compatibility
+  # jobs may set this explicitly after validating all third-party dependencies.
   set(
     OTCLIENT_WINDOWS_TARGET
-    "0x0602"
+    ""
     CACHE STRING
-    "Minimum supported Windows version (_WIN32_WINNT)"
+    "Optional minimum Windows version (_WIN32_WINNT)"
   )
 
-  set(
-    OTCLIENT_NTDDI_TARGET
-    "0x06020000"
-  )
+  if(OTCLIENT_WINDOWS_TARGET)
+    if(OTCLIENT_WINDOWS_TARGET STREQUAL "0x0A00")
+      set(OTCLIENT_NTDDI_TARGET "0x0A000000")
+    else()
+      message(FATAL_ERROR "Unsupported OTCLIENT_WINDOWS_TARGET=${OTCLIENT_WINDOWS_TARGET}; currently validated: 0x0A00")
+    endif()
 
-  target_compile_definitions(
-    otclient_core
-    PUBLIC
-    NTDDI_VERSION=${OTCLIENT_NTDDI_TARGET}
-    _WIN32_WINNT=${OTCLIENT_WINDOWS_TARGET}
-    WINVER=${OTCLIENT_WINDOWS_TARGET}
-  )
+    target_compile_definitions(
+      otclient_core
+      PUBLIC
+      NTDDI_VERSION=${OTCLIENT_NTDDI_TARGET}
+      _WIN32_WINNT=${OTCLIENT_WINDOWS_TARGET}
+      WINVER=${OTCLIENT_WINDOWS_TARGET}
+    )
+  endif()
 
   target_compile_definitions(
     otclient_core
@@ -1450,7 +1453,7 @@ if(WIN32)
     "/SUBSYSTEM:windows /ENTRY:mainCRTStartup"
 
     LINK_FLAGS_RELWITHDEBINFO
-    "/SUBSYSTEM:CONSOLE"
+    "/SUBSYSTEM:windows /ENTRY:mainCRTStartup"
 
     LINK_FLAGS_MINSIZEREL
     "/SUBSYSTEM:windows /ENTRY:mainCRTStartup"
