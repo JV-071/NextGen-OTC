@@ -43,7 +43,7 @@ void ScheduledEvent::execute()
 }
 
 void ScheduledEvent::postpone() { m_ticks = g_clock.millis() + m_delay; }
-int ScheduledEvent::remainingTicks() { return m_ticks - g_clock.millis(); }
+ticks_t ScheduledEvent::remainingTicks() { return m_ticks - g_clock.millis(); }
 bool ScheduledEvent::nextCycle()
 {
     if (m_callback && !m_canceled && (m_maxCycles == 0 || m_cyclesExecuted < m_maxCycles)) {

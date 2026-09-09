@@ -34,8 +34,8 @@ public:
     void postpone();
     bool nextCycle();
 
-    int ticks() { return m_ticks; }
-    int remainingTicks();
+    ticks_t ticks() { return m_ticks; }
+    ticks_t remainingTicks();
     int delay() { return m_delay; }
     int cyclesExecuted() { return m_cyclesExecuted; }
     int maxCycles() { return m_maxCycles; }

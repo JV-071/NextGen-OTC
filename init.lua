@@ -8,7 +8,10 @@ Services = {
     --websites = "http://localhost/?subtopic=accountmanagement", --./client_entergame "Forgot password and/or email"
     --createAccount = "http://localhost/clientcreateaccount.php", --./client_entergame -- createAccount.lua
     --getCoinsUrl = "http://localhost/?subtopic=shop&step=terms", --./game_market
-    minimap = "http://127.0.0.1/minimap.otmm", --./game_minimap
+    -- Configure a public URL only when a real OTMM file is hosted there.
+    -- 127.0.0.1 points to each player's own PC and therefore must not be a
+    -- distributed default.
+    -- minimap = "https://example.com/minimap.otmm", --./game_minimap
 }
 
 --- Enables or disables the entire server configuration block.

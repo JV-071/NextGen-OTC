@@ -71,27 +71,24 @@ const char* getExceptionName(const DWORD exceptionCode)
 
 void Stacktrace(LPEXCEPTION_POINTERS e, std::stringstream& ss)
 {
-    STACKFRAME sf;
+    STACKFRAME64 sf;
     HANDLE process, thread;
-    ULONG_PTR dwModBase, Disp;
-    BOOL more = FALSE;
     DWORD machineType;
-    int count = 0;
     char modname[MAX_PATH];
-    char symBuffer[sizeof(IMAGEHLP_SYMBOL) + 255];
-
-    auto* pSym = (PIMAGEHLP_SYMBOL)symBuffer;
+    char symBuffer[sizeof(IMAGEHLP_SYMBOL64) + 255];
+    auto* pSym = reinterpret_cast<PIMAGEHLP_SYMBOL64>(symBuffer);
+    CONTEXT context = *e->ContextRecord;
 
     ZeroMemory(&sf, sizeof(sf));
 #ifdef _WIN64
-    sf.AddrPC.Offset = e->ContextRecord->Rip;
-    sf.AddrStack.Offset = e->ContextRecord->Rsp;
-    sf.AddrFrame.Offset = e->ContextRecord->Rbp;
+    sf.AddrPC.Offset = context.Rip;
+    sf.AddrStack.Offset = context.Rsp;
+    sf.AddrFrame.Offset = context.Rbp;
     machineType = IMAGE_FILE_MACHINE_AMD64;
 #else
-    sf.AddrPC.Offset = e->ContextRecord->Eip;
-    sf.AddrStack.Offset = e->ContextRecord->Esp;
-    sf.AddrFrame.Offset = e->ContextRecord->Ebp;
+    sf.AddrPC.Offset = context.Eip;
+    sf.AddrStack.Offset = context.Esp;
+    sf.AddrFrame.Offset = context.Ebp;
     machineType = IMAGE_FILE_MACHINE_I386;
 #endif
 
@@ -102,14 +99,15 @@ void Stacktrace(LPEXCEPTION_POINTERS e, std::stringstream& ss)
     process = GetCurrentProcess();
     thread = GetCurrentThread();
 
-    while (true) {
-        more = StackWalk(machineType, process, thread, &sf, e->ContextRecord, nullptr, SymFunctionTableAccess, SymGetModuleBase, nullptr);
-        if (!more || sf.AddrFrame.Offset == 0)
+    for (int count = 0; count < 64; ++count) {
+        if (!StackWalk64(machineType, process, thread, &sf, &context, nullptr,
+                         SymFunctionTableAccess64, SymGetModuleBase64, nullptr)
+            || sf.AddrPC.Offset == 0)
             break;
 
-        dwModBase = SymGetModuleBase(process, sf.AddrPC.Offset);
-        if (dwModBase)
-            GetModuleFileName(reinterpret_cast<HINSTANCE>(dwModBase), modname, MAX_PATH);
+        const DWORD64 moduleBase = SymGetModuleBase64(process, sf.AddrPC.Offset);
+        if (moduleBase)
+            GetModuleFileNameA(reinterpret_cast<HINSTANCE>(moduleBase), modname, MAX_PATH);
         else {
 #ifdef _MSC_VER
             strcpy_s(modname, sizeof(modname), "Unknown");
@@ -119,15 +117,26 @@ void Stacktrace(LPEXCEPTION_POINTERS e, std::stringstream& ss)
 #endif
         }
 
-        Disp = 0;
-        pSym->SizeOfStruct = sizeof(symBuffer);
+        ZeroMemory(pSym, sizeof(symBuffer));
+        pSym->SizeOfStruct = sizeof(IMAGEHLP_SYMBOL64);
         pSym->MaxNameLength = 254;
 
-        if (SymGetSymFromAddr(process, sf.AddrPC.Offset, &Disp, pSym))
-            ss << fmt::format("    {}: {}({}+%#0lx) [0x%016lX]\n", count, modname, pSym->Name, Disp, sf.AddrPC.Offset);
+        DWORD64 displacement = 0;
+        if (SymGetSymFromAddr64(process, sf.AddrPC.Offset, &displacement, pSym))
+            ss << fmt::format("    {}: {}({}+0x{:X}) [0x{:016X}]\n",
+                              count, modname, pSym->Name, displacement, sf.AddrPC.Offset);
         else
-            ss << fmt::format("    {}: {} [0x%016lX]\n", count, modname, sf.AddrPC.Offset);
-        ++count;
+            ss << fmt::format("    {}: {}+0x{:X} [0x{:016X}]\n",
+                              count, modname,
+                              moduleBase ? sf.AddrPC.Offset - moduleBase : sf.AddrPC.Offset,
+                              sf.AddrPC.Offset);
+
+        IMAGEHLP_LINE64 line{};
+        line.SizeOfStruct = sizeof(line);
+        DWORD lineDisplacement = 0;
+        if (SymGetLineFromAddr64(process, sf.AddrPC.Offset, &lineDisplacement, &line))
+            ss << fmt::format("       at {}:{} (+0x{:X})\n",
+                              line.FileName, line.LineNumber, lineDisplacement);
     }
     // pSym points to symBuffer, which is stack storage owned by this function.
     // It must not be passed to GlobalFree; doing so corrupts the process heap
@@ -137,7 +146,15 @@ void Stacktrace(LPEXCEPTION_POINTERS e, std::stringstream& ss)
 
 LONG CALLBACK ExceptionHandler(const LPEXCEPTION_POINTERS e)
 {
-    SymInitialize(GetCurrentProcess(), nullptr, TRUE);
+    const HANDLE process = GetCurrentProcess();
+    SymSetOptions(SYMOPT_DEFERRED_LOADS | SYMOPT_LOAD_LINES | SYMOPT_UNDNAME);
+    SymInitialize(process, nullptr, TRUE);
+
+    const auto exceptionAddress = reinterpret_cast<std::uintptr_t>(e->ExceptionRecord->ExceptionAddress);
+    const DWORD64 moduleBase = SymGetModuleBase64(process, exceptionAddress);
+    char moduleName[MAX_PATH] = "Unknown";
+    if (moduleBase)
+        GetModuleFileNameA(reinterpret_cast<HINSTANCE>(moduleBase), moduleName, MAX_PATH);
 
     std::string crashReport = fmt::format(
         "== application crashed\n"
@@ -149,8 +166,10 @@ LONG CALLBACK ExceptionHandler(const LPEXCEPTION_POINTERS e)
         "build revision: {} ({})\n"
         "crash date: {}\n"
         "exception: {} (0x{:08X})\n"
-        "exception address: 0x{:08X}\n"
-        "  backtrace:\n",
+        "exception address: 0x{:016X}\n"
+        "fault module: {}\n"
+        "fault module base: 0x{:016X}\n"
+        "fault rva: 0x{:X}\n",
         g_app.getName(),
         g_app.getVersion(),
         g_app.getBuildCompiler(), g_app.getBuildArch(),
@@ -159,15 +178,31 @@ LONG CALLBACK ExceptionHandler(const LPEXCEPTION_POINTERS e)
         g_app.getBuildRevision(), g_app.getBuildCommit(),
         stdext::date_time_string(),
         getExceptionName(e->ExceptionRecord->ExceptionCode), e->ExceptionRecord->ExceptionCode,
-        reinterpret_cast<std::uintptr_t>(e->ExceptionRecord->ExceptionAddress)
+        exceptionAddress,
+        moduleName,
+        moduleBase,
+        moduleBase ? exceptionAddress - moduleBase : exceptionAddress
     );
+
+    if (e->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION
+        && e->ExceptionRecord->NumberParameters >= 2) {
+        const ULONG_PTR operation = e->ExceptionRecord->ExceptionInformation[0];
+        const char* operationName = operation == 0 ? "read"
+                                  : operation == 1 ? "write"
+                                  : operation == 8 ? "execute"
+                                                   : "access";
+        crashReport += fmt::format("access violation: {} at 0x{:016X}\n",
+                                   operationName,
+                                   e->ExceptionRecord->ExceptionInformation[1]);
+    }
+    crashReport += "  backtrace:\n";
 
     std::stringstream oss;
     oss << crashReport;
     Stacktrace(e, oss);
     oss << "\n";
 
-    SymCleanup(GetCurrentProcess());
+    SymCleanup(process);
 
     g_logger.info(oss.str());
 
