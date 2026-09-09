@@ -128,17 +128,6 @@ jobs:
             ${{ github.workspace }}/vcpkg/downloads
           key: vcpkg-windows-x64-static-${{ hashFiles('vcpkg.json') }}-${{ steps.compile.outcome == 'success' && 'complete-v1' || format('{0}-{1}', github.run_id, github.run_attempt) }}
 
-      - name: Upload build diagnostics
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: NextGen-OTC-windows-build-log
-          path: |
-            ${{ github.workspace }}/windows-build.log
-            ${{ github.workspace }}/build/windows-release/vcpkg-manifest-install.log
-            ${{ github.workspace }}/vcpkg/buildtrees/**/*.log
-          if-no-files-found: ignore
-
       - name: Report build failure
         if: ${{ steps.compile.outcome == 'failure' }}
         shell: pwsh
@@ -154,7 +143,7 @@ jobs:
               Write-Output "::error title=Windows build log part $part::$text"
             }
           }
-          Write-Error "Windows build failed. See the annotations or download NextGen-OTC-windows-build-log."
+          Write-Error "Windows build failed. See the annotations and step output above."
           exit 1
 
       - name: Test bestiary protocol layouts
