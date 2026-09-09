@@ -103,7 +103,7 @@ UIWidget
       margin-top: -1
       text-offset: 16 0
       !text: tr('HD Graphics (xBRZ)')
-      !tooltip: tr('Upscales game sprites with xBRZ. Reopen the game view if needed.')
+      !tooltip: tr('Upscales classic game sprites with xBRZ for a smoother HD look. Increases CPU and memory usage. Restart the client to apply this option.')
 
     OptionCheckBoxMarked
       id: vsync

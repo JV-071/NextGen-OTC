@@ -11,6 +11,19 @@ local options = dataOptionsChunk()
 assert(type(options.showAnimatedMouseCursor) == 'table', 'animated cursor option is missing')
 assert(options.showAnimatedMouseCursor.value == true, 'animated cursor should default to enabled')
 assert(options.showAnimatedMouseCursor.deferAction == true, 'cursor changes must follow Apply/Cancel semantics')
+assert(type(options.hdGraphics) == 'table', 'xBRZ option is missing')
+assert(options.hdGraphics.value == false, 'xBRZ should remain opt-in')
+assert(options.hdGraphics.deferAction == true, 'xBRZ changes must follow Apply/Cancel semantics')
+
+local spriteScale
+g_sprites = {
+  setScaleFactor = function(value) spriteScale = value end,
+}
+options.hdGraphics.action(true, options, nil, nil)
+assert(spriteScale == 2, 'enabling xBRZ must request 2x sprite textures')
+options.hdGraphics.action(false, options, nil, nil)
+assert(spriteScale == 1, 'disabling xBRZ must restore native sprite textures')
+g_sprites = nil
 
 local cursorAnimations
 options.showAnimatedMouseCursor.action(false, options, nil, {

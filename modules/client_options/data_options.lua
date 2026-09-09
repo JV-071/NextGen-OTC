@@ -1434,12 +1434,11 @@ return {
 		end
 	},
 	hdGraphics = {
+		deferAction = true,
 		value = false,
 		action = function(value, options, controller, panels, extraWidgets)
 			if g_sprites and g_sprites.setScaleFactor then
-				-- Keep the native Tibia sprite grid at 32x32. Upscaling the
-				-- sprite source to 64x64 corrupts outfit masks on some creatures.
-				g_sprites.setScaleFactor(1)
+				g_sprites.setScaleFactor(value and 2 or 1)
 			end
 			if panels and panels.gameMapPanel then
 				panels.gameMapPanel:setAntiAliasingMode(options.antialiasingMode.value)

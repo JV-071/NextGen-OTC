@@ -28,7 +28,6 @@
 #include "thingtypemanager.h"
 #include "framework/core/asyncdispatcher.h"
 #include "framework/core/filestream.h"
-#include "framework/core/eventdispatcher.h"
 #include "framework/core/graphicalapplication.h"
 #include "framework/core/resourcemanager.h"
 #include "framework/graphics/image.h"
@@ -254,14 +253,18 @@ void SpriteManager::setScaleFactor(int factor)
     factor = std::clamp(factor, MinScaleFactor, MaxScaleFactor);
     if (m_scaleFactor == factor && g_gameConfig.getSpriteScaleFactor() == factor)
         return;
+
+    // Thing textures can be produced by worker threads. Rebuilding all of them
+    // while the DAT is active races those readers and caused corrupted outfit
+    // masks and intermittent crashes. Persist the option and apply it on the
+    // next client start instead.
+    if (g_things.isDatLoaded()) {
+        g_logger.warning("HD sprite scale changes require a client restart");
+        return;
+    }
+
     m_scaleFactor = factor;
     g_gameConfig.setSpriteScaleFactor(static_cast<uint8_t>(factor));
-    if (g_things.isDatLoaded()) {
-        g_mainDispatcher.addEvent([] {
-            if (g_things.isDatLoaded())
-                g_things.unloadTextures();
-        });
-    }
 }
 
 ImagePtr SpriteManager::upscaleSprite(const ImagePtr& sprite, int scaleFactor) const
@@ -272,41 +275,60 @@ ImagePtr SpriteManager::upscaleSprite(const ImagePtr& sprite, int scaleFactor) c
         return sprite;
     scaleFactor = std::clamp(scaleFactor, MinScaleFactor, MaxScaleFactor);
 
-    const int sourceWidth = sprite->getWidth();
-    const int sourceHeight = sprite->getHeight();
-    std::vector<uint32_t> sourcePixels(sourceWidth * sourceHeight);
-    const auto& sourceData = sprite->getPixels();
-    for (size_t i = 0; i < sourcePixels.size(); ++i) {
-        const size_t offset = i * 4;
-        const uint8_t alpha = sourceData[offset + 3];
-        sourcePixels[i] = alpha == 0 ? 0 :
-            (static_cast<uint32_t>(alpha) << 24) |
-            (static_cast<uint32_t>(sourceData[offset]) << 16) |
-            (static_cast<uint32_t>(sourceData[offset + 1]) << 8) |
-            static_cast<uint32_t>(sourceData[offset + 2]);
+    try {
+        const int sourceWidth = sprite->getWidth();
+        const int sourceHeight = sprite->getHeight();
+        if (sourceWidth <= 0 || sourceHeight <= 0)
+            return sprite;
+
+        std::vector<uint32_t> sourcePixels(static_cast<size_t>(sourceWidth) * sourceHeight);
+        const auto& sourceData = sprite->getPixels();
+        for (size_t i = 0; i < sourcePixels.size(); ++i) {
+            const size_t offset = i * 4;
+            const uint8_t alpha = sourceData[offset + 3];
+            sourcePixels[i] = alpha == 0 ? 0 :
+                (static_cast<uint32_t>(alpha) << 24) |
+                (static_cast<uint32_t>(sourceData[offset]) << 16) |
+                (static_cast<uint32_t>(sourceData[offset + 1]) << 8) |
+                static_cast<uint32_t>(sourceData[offset + 2]);
+        }
+
+        const int targetWidth = sourceWidth * scaleFactor;
+        const int targetHeight = sourceHeight * scaleFactor;
+        std::vector<uint32_t> targetPixels(static_cast<size_t>(targetWidth) * targetHeight);
+        xbrz::scale(static_cast<size_t>(scaleFactor), sourcePixels.data(), targetPixels.data(),
+                    sourceWidth, sourceHeight, xbrz::ColorFormat::argb);
+
+        auto result = std::make_shared<Image>(Size(targetWidth, targetHeight));
+        auto& targetData = result->getPixels();
+        bool transparent = false;
+        for (size_t i = 0; i < targetPixels.size(); ++i) {
+            const uint32_t pixel = targetPixels[i];
+            const size_t offset = i * 4;
+            const uint8_t alpha = static_cast<uint8_t>(pixel >> 24);
+            targetData[offset] = alpha ? static_cast<uint8_t>(pixel >> 16) : 0;
+            targetData[offset + 1] = alpha ? static_cast<uint8_t>(pixel >> 8) : 0;
+            targetData[offset + 2] = alpha ? static_cast<uint8_t>(pixel) : 0;
+            targetData[offset + 3] = alpha;
+            transparent |= alpha != 0xFF;
+        }
+        result->setTransparentPixel(transparent);
+        return result;
+    } catch (const std::bad_alloc&) {
+        static bool warned = false;
+        if (!warned) {
+            warned = true;
+            g_logger.warning("HD sprite upscaling ran out of memory; using the original sprite");
+        }
+    } catch (const std::exception& exception) {
+        static bool warned = false;
+        if (!warned) {
+            warned = true;
+            g_logger.warning("HD sprite upscaling failed: {}; using the original sprite", exception.what());
+        }
     }
 
-    const int targetWidth = sourceWidth * scaleFactor;
-    const int targetHeight = sourceHeight * scaleFactor;
-    std::vector<uint32_t> targetPixels(targetWidth * targetHeight);
-    xbrz::scale(static_cast<size_t>(scaleFactor), sourcePixels.data(), targetPixels.data(),
-                sourceWidth, sourceHeight, xbrz::ColorFormat::argb);
-
-    auto result = std::make_shared<Image>(Size(targetWidth, targetHeight));
-    auto& targetData = result->getPixels();
-    bool transparent = false;
-    for (size_t i = 0; i < targetPixels.size(); ++i) {
-        const uint32_t pixel = targetPixels[i];
-        const size_t offset = i * 4;
-        const uint8_t alpha = static_cast<uint8_t>(pixel >> 24);
-        targetData[offset] = alpha ? static_cast<uint8_t>(pixel >> 16) : 0;
-        targetData[offset + 1] = alpha ? static_cast<uint8_t>(pixel >> 8) : 0;
-        targetData[offset + 2] = alpha ? static_cast<uint8_t>(pixel) : 0;
-        targetData[offset + 3] = alpha;
-        transparent |= alpha != 0xFF;
-    }
-    result->setTransparentPixel(transparent);
-    return result;
+    return sprite;
 }
 
 ImagePtr SpriteManager::getSpriteImageHd(const int id, const FileStreamPtr& file)
