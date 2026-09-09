@@ -815,11 +815,12 @@ target_compile_definitions(
 
 if(MSVC)
 
-  # Leave ordinary desktop builds on the SDK default. Dedicated compatibility
-  # jobs may set this explicitly after validating all third-party dependencies.
+  # cpp-httplib requires the Windows 10 API baseline. This is the desktop
+  # dependency requirement; Windows Server compatibility is validated by its
+  # own CI job instead of changing the ordinary Windows build graph.
   set(
     OTCLIENT_WINDOWS_TARGET
-    ""
+    "0x0A00"
     CACHE STRING
     "Optional minimum Windows version (_WIN32_WINNT)"
   )
