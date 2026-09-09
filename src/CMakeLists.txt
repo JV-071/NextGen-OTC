@@ -815,17 +815,18 @@ target_compile_definitions(
 
 if(MSVC)
 
-  # Windows 10 or newer.
+  # Windows Server 2012 is based on Windows 8. Keep the portable Windows
+  # artifacts usable on Server 2012 and later, including RDP sessions.
   set(
     OTCLIENT_WINDOWS_TARGET
-    "0x0A00"
+    "0x0602"
     CACHE STRING
     "Minimum supported Windows version (_WIN32_WINNT)"
   )
 
   set(
     OTCLIENT_NTDDI_TARGET
-    "0x0A000000"
+    "0x06020000"
   )
 
   target_compile_definitions(
