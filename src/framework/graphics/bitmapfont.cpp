@@ -396,13 +396,40 @@ void BitmapFont::calculateGlyphsWidthsAutomatically(const ImagePtr& image, const
 
     const auto& imageSize = image->getSize();
     const auto& texturePixels = image->getPixels();
-    const int numHorizontalGlyphs = imageSize.width() / glyphSize.width();
+    if (glyphSize.width() <= 0 || glyphSize.height() <= 0 || imageSize.width() <= 0 || imageSize.height() <= 0)
+        return;
 
+    const int numHorizontalGlyphs = imageSize.width() / glyphSize.width();
+    if (numHorizontalGlyphs <= 0)
+        return;
+
+    constexpr size_t bytesPerPixel = 4;
+    const size_t requiredPixelBytes = static_cast<size_t>(imageSize.width()) *
+                                      static_cast<size_t>(imageSize.height()) * bytesPerPixel;
+    if (texturePixels.size() < requiredPixelBytes) {
+        g_logger.warning("Unable to calculate bitmap font glyph widths: invalid RGBA pixel buffer");
+        for (int glyph = m_firstGlyph; glyph < 256; ++glyph)
+            m_glyphsSize[glyph].resize(glyphSize.width(), m_glyphHeight);
+        return;
+    }
+
+    bool warnedAboutAtlasBounds = false;
     for (int glyph = m_firstGlyph; glyph < 256; ++glyph) {
+        m_glyphsSize[glyph].resize(glyphSize.width(), m_glyphHeight);
+
         Rect glyphCoords(((glyph - m_firstGlyph) % numHorizontalGlyphs) * glyphSize.width(),
                          ((glyph - m_firstGlyph) / numHorizontalGlyphs) * glyphSize.height(),
                          glyphSize.width(),
                          m_glyphHeight);
+
+        if (glyphCoords.left() < 0 || glyphCoords.top() < 0 ||
+            glyphCoords.right() >= imageSize.width() || glyphCoords.bottom() >= imageSize.height()) {
+            if (!warnedAboutAtlasBounds) {
+                g_logger.warning(stdext::format("Unable to calculate bitmap font glyph %d width: glyph rectangle is outside the image", glyph));
+                warnedAboutAtlasBounds = true;
+            }
+            continue;
+        }
 
         int width = glyphSize.width();
         for (int x = glyphCoords.left(); x <= glyphCoords.right(); ++x) {

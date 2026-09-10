@@ -53,7 +53,7 @@ OptionCheckBox < QtCheckBox
   anchors.right: parent.right
   anchors.top: parent.top
   color: $var-text-cip-color
-  @onCheckChange: modules.client_options.setOption(self:getId(), self:isChecked())
+  @onCheckChange: modules.client_options.setOption(self:getId(), self:isChecked(), false, self)
 
 OptionCheckBoxMarked < OptionCheckBox
   UIWidget
@@ -72,7 +72,7 @@ OptionCheckBoxReverse < QtCheckBox
   padding-right: 18
   font: $var-cip-font-new
   color: #c0c0c0
-  @onCheckChange: modules.client_options.setOption(self:getId(), self:isChecked())
+  @onCheckChange: modules.client_options.setOption(self:getId(), self:isChecked(), false, self)
   @onSetup: modules.client_options.updateReverseCheckboxLayout(self)
   @onTextChange: modules.client_options.updateReverseCheckboxLayout(self)
 

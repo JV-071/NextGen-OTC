@@ -2527,7 +2527,7 @@ function updateReverseCheckboxLayout(widget)
 	})
 end
 
-function setOption(key, value, force)
+function setOption(key, value, force, sourceWidget)
 	if not modules.game_interface then
 		return
 	end
@@ -2605,7 +2605,16 @@ function setOption(key, value, force)
 		end
 
 		if type(value) == "boolean" then
-			syncOptionWidgetAcrossPanels(key, value)
+			-- A clicked checkbox has already updated its own visual state. Synchronizing
+			-- every options tree recursively in the same input callback makes the click
+			-- appear delayed on large option pages, so update duplicates next frame.
+			if sourceWidget then
+				addEvent(function()
+					syncOptionWidgetAcrossPanels(key, value)
+				end)
+			else
+				syncOptionWidgetAcrossPanels(key, value)
+			end
 		end
 
 		return

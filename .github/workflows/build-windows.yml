@@ -304,8 +304,9 @@ jobs:
           path: |
             ${{ github.workspace }}/.vcpkg-binary-cache
             ${{ github.workspace }}/vcpkg/downloads
-          key: vcpkg-windows-${{ matrix.triplet }}-${{ hashFiles('vcpkg.json') }}-${{ matrix.cache_flavor }}-variants-v1
+          key: vcpkg-windows-${{ matrix.triplet }}-${{ hashFiles('vcpkg.json') }}-${{ matrix.cache_flavor }}-variants-complete-v2
           restore-keys: |
+            vcpkg-windows-${{ matrix.triplet }}-${{ hashFiles('vcpkg.json') }}-${{ matrix.cache_flavor }}-variants-
             vcpkg-windows-${{ matrix.triplet }}-${{ hashFiles('vcpkg.json') }}-base-
             vcpkg-windows-${{ matrix.triplet }}-${{ hashFiles('vcpkg.json') }}-
             vcpkg-windows-${{ matrix.triplet }}-
@@ -359,6 +360,7 @@ jobs:
           vs-version: "[18.0,19.0)"
 
       - name: Build CMake Debug
+        id: cmake-build
         if: matrix.type == 'cmake'
         shell: pwsh
         run: |
@@ -368,6 +370,7 @@ jobs:
           exit $LASTEXITCODE
 
       - name: Build Visual Studio solution
+        id: solution-build
         if: matrix.type == 'solution'
         shell: pwsh
         run: |
@@ -392,7 +395,7 @@ jobs:
           path: |
             ${{ github.workspace }}/.vcpkg-binary-cache
             ${{ github.workspace }}/vcpkg/downloads
-          key: vcpkg-windows-${{ matrix.triplet }}-${{ hashFiles('vcpkg.json') }}-${{ matrix.cache_flavor }}-variants-v1
+          key: vcpkg-windows-${{ matrix.triplet }}-${{ hashFiles('vcpkg.json') }}-${{ matrix.cache_flavor }}-variants-${{ (steps.cmake-build.outcome == 'success' || steps.solution-build.outcome == 'success') && 'complete-v2' || format('{0}-{1}', github.run_id, github.run_attempt) }}
 
       - name: Stage CMake Debug artifact
         if: matrix.type == 'cmake'

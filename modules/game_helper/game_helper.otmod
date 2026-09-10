@@ -1,10 +1,10 @@
 Module
   name: game_helper
-  description: Tyron Helper adapted for CrystalOTC
-  author: Tyron / CrystalOTC adaptation
+  description: Paulistinha Helper adapted for NextGen-OTC
+  author: PaulistinhaOT / NextGen-OTC adaptation
   sandboxed: true
   reloadable: true
-  scripts: [ helper_posture, helper_cavebot, helper, knight, paladin, sorcerer, druid, monk ]
+  scripts: [ helper_healer, helper_heal_friend, helper_target, helper_posture, helper_shooter, helper_tools, helper_conditions, helper_autoparty, helper_config, helper_cavebot, game_helper ]
   autoload: true
   autoload-priority: 1200
   dependencies:

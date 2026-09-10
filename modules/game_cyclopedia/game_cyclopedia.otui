@@ -5,7 +5,7 @@ MainWindowHigh
   !text: tr('Cyclopedia')
   visible: false
   text-offset: -1 1
-  @onEscape: toggle()
+  @onEscape: modules.game_cyclopedia.toggle()
 
   UIWidget
     id: buttonSelection
@@ -31,7 +31,7 @@ MainWindowHigh
       margin-top: 1
       margin-left: 1
       size: 668 36
-      @onClick: SelectWindow("items")
+      @onClick: modules.game_cyclopedia.SelectWindow("items")
 
       $on:
         size: 200 34
@@ -53,7 +53,7 @@ MainWindowHigh
       anchors.top: prev.top
       anchors.left: prev.right
       margin-left: 1
-      @onClick: SelectWindow("bestiary")
+      @onClick: modules.game_cyclopedia.SelectWindow("bestiary")
 
       $on:
         size: 200 34
@@ -75,7 +75,7 @@ MainWindowHigh
       anchors.top: prev.top
       anchors.left: prev.right
       margin-left: 1
-      @onClick: SelectWindow("charms")
+      @onClick: modules.game_cyclopedia.SelectWindow("charms")
 
       $on:
         size: 200 34
@@ -97,7 +97,7 @@ MainWindowHigh
       anchors.top: prev.top
       anchors.left: prev.right
       margin-left: 1
-      @onClick: SelectWindow("map")
+      @onClick: modules.game_cyclopedia.SelectWindow("map")
 
       $on:
         size: 200 34
@@ -119,7 +119,7 @@ MainWindowHigh
       anchors.top: prev.top
       anchors.left: prev.right
       margin-left: 1
-      @onClick: SelectWindow("houses")
+      @onClick: modules.game_cyclopedia.SelectWindow("houses")
 
       $on:
         size: 200 34
@@ -141,7 +141,7 @@ MainWindowHigh
       anchors.top: prev.top
       anchors.left: prev.right
       margin-left: 1
-      @onClick: SelectWindow("character")
+      @onClick: modules.game_cyclopedia.SelectWindow("character")
 
       $on:
         size: 200 34
@@ -163,7 +163,7 @@ MainWindowHigh
       anchors.top: prev.top
       anchors.left: prev.right
       margin-left: 1
-      @onClick: SelectWindow("bosstiary")
+      @onClick: modules.game_cyclopedia.SelectWindow("bosstiary")
 
       $on:
         size: 200 34
@@ -185,7 +185,7 @@ MainWindowHigh
       anchors.top: prev.top
       anchors.left: prev.right
       margin-left: 1
-      @onClick: SelectWindow("bossSlot")
+      @onClick: modules.game_cyclopedia.SelectWindow("bossSlot")
 
       $on:
         size: 200 34
@@ -207,7 +207,7 @@ MainWindowHigh
       anchors.top: prev.top
       anchors.left: prev.right
       margin-left: 1
-      @onClick: SelectWindow("magicalArchives")
+      @onClick: modules.game_cyclopedia.SelectWindow("magicalArchives")
 
       $on:
         size: 200 34
@@ -241,7 +241,7 @@ MainWindowHigh
     font: cipsoftFont
     text-offset: -1 1
     color: #ffffff
-    @onClick: toggle()
+    @onClick: modules.game_cyclopedia.toggle()
 
   Button
     id: BackButton
@@ -254,7 +254,7 @@ MainWindowHigh
     text-offset: -1 1
     color: #ffffff
     enabled: false
-    @onClick: toggleBack()
+    @onClick: modules.game_cyclopedia.toggleBack()
 
   Button
     id: RefreshButton
