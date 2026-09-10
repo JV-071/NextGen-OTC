@@ -52,7 +52,7 @@ void ProtocolGame::parseMessage(const InputMessagePtr& msg)
     int prevOpcode = -1;
     uint32_t opcodeCount = 0;
 
-    g_logger.traceDebug("[PROTO_TRACE] parseMessage begin: size={}, readPos={}, unread={}",
+    g_logger.debug("[PROTO_TRACE] parseMessage begin: size={}, readPos={}, unread={}",
         msg->getMessageSize(), msg->getReadPos(), msg->getUnreadSize());
 
     try {
@@ -62,7 +62,7 @@ void ProtocolGame::parseMessage(const InputMessagePtr& msg)
             const int bodyStart = msg->getReadPos();
             ++opcodeCount;
 
-            g_logger.traceDebug("[PROTO_TRACE] opcode #{}, 0x{:02X}: start={}, bodyStart={}, unread={}",
+            g_logger.debug("[PROTO_TRACE] opcode #{}, 0x{:02X}: start={}, bodyStart={}, unread={}",
                 opcodeCount, opcode, opcodeStart, bodyStart, msg->getUnreadSize());
             AUTO_STAT(STATS_PACKETS, fmt::format("{} (0x{:02X})", opcode, opcode));
 
@@ -79,7 +79,7 @@ void ProtocolGame::parseMessage(const InputMessagePtr& msg)
             const bool handledByLua = callLuaField<bool>("onOpcode", opcode, msg);
             const int luaReadPos = msg->getReadPos();
             if (handledByLua) {
-                g_logger.traceDebug("[PROTO_TRACE] opcode 0x{:02X} handled by Lua: {} -> {}, consumed={}, unread={}",
+                g_logger.debug("[PROTO_TRACE] opcode 0x{:02X} handled by Lua: {} -> {}, consumed={}, unread={}",
                     opcode, readPos, luaReadPos, luaReadPos - readPos, msg->getUnreadSize());
                 if (luaReadPos == readPos && msg->getUnreadSize() > 0) {
                     g_logger.warning("[PROTO_TRACE] Lua handled opcode 0x{:02X} without consuming payload at pos {}; remaining={}",
@@ -714,7 +714,7 @@ void ProtocolGame::parseMessage(const InputMessagePtr& msg)
                 }
             }
             const int handlerReadPos = msg->getReadPos();
-            g_logger.traceDebug("[PROTO_TRACE] opcode 0x{:02X} finished: {} -> {}, consumed={}, unread={}",
+            g_logger.debug("[PROTO_TRACE] opcode 0x{:02X} finished: {} -> {}, consumed={}, unread={}",
                 opcode, bodyStart, handlerReadPos, handlerReadPos - bodyStart, msg->getUnreadSize());
             if (handlerReadPos < opcodeStart) {
                 g_logger.error("[PROTO_TRACE] parser rewound message at opcode 0x{:02X}: {} -> {}; aborting frame",
@@ -723,7 +723,7 @@ void ProtocolGame::parseMessage(const InputMessagePtr& msg)
             }
             prevOpcode = opcode;
         }
-        g_logger.traceDebug("[PROTO_TRACE] parseMessage end: opcodes={}, readPos={}, unread={}",
+        g_logger.debug("[PROTO_TRACE] parseMessage end: opcodes={}, readPos={}, unread={}",
             opcodeCount, msg->getReadPos(), msg->getUnreadSize());
     } catch (const stdext::exception& e) {
         const auto unread = msg->getUnreadSize();
@@ -1369,7 +1369,7 @@ void ProtocolGame::parsePlayerHelpers(const InputMessagePtr& msg) const
 
     const auto& creature = g_map.getCreatureById(creatureId);
     if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parsePlayerHelpers: could not get creature with id {}", creatureId);
+        g_logger.debug("ProtocolGame::parsePlayerHelpers: could not get creature with id {}", creatureId);
         return;
     }
 
@@ -2265,7 +2265,7 @@ void ProtocolGame::parseCreatureMark(const InputMessagePtr& msg)
 
     const auto& creature = g_map.getCreatureById(creatureId);
     if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseCreatureMark: could not get creature with id {}", creatureId);
+        g_logger.debug("ProtocolGame::parseCreatureMark: could not get creature with id {}", creatureId);
         return;
     }
 
@@ -2284,7 +2284,7 @@ void ProtocolGame::parseTrappers(const InputMessagePtr& msg)
         const uint32_t creatureId = msg->getU32();
         const auto& creature = g_map.getCreatureById(creatureId);
         if (!creature) {
-            g_logger.traceDebug("ProtocolGame::parseTrappers: could not get creature with id {}", creatureId);
+            g_logger.debug("ProtocolGame::parseTrappers: could not get creature with id {}", creatureId);
         }
 
         //TODO: set creature as trapper
@@ -2403,7 +2403,7 @@ void ProtocolGame::addCreatureIcon(const InputMessagePtr& msg, const uint32_t cr
 
     const auto& creature = g_map.getCreatureById(creatureId);
     if (!creature) {
-        g_logger.traceDebug("ProtocolGame::addCreatureIcon: could not get creature with id {}", creatureId);
+        g_logger.debug("ProtocolGame::addCreatureIcon: could not get creature with id {}", creatureId);
         return;
     }
 
@@ -2441,7 +2441,7 @@ void ProtocolGame::parseCreatureData(const InputMessagePtr& msg)
 
     const auto& creature = g_map.getCreatureById(creatureId);
     if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseCreatureData: could not get creature with id {}", creatureId);
+        g_logger.debug("ProtocolGame::parseCreatureData: could not get creature with id {}", creatureId);
     }
 
     switch (type) {
@@ -2470,7 +2470,7 @@ void ProtocolGame::parseCreatureHealth(const InputMessagePtr& msg)
 
     const auto& creature = g_map.getCreatureById(creatureId);
     if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseCreatureHealth: could not get creature with id {}", creatureId);
+        g_logger.debug("ProtocolGame::parseCreatureHealth: could not get creature with id {}", creatureId);
         return;
     }
 
@@ -2487,7 +2487,7 @@ void ProtocolGame::parseCreatureLight(const InputMessagePtr& msg)
 
     const auto& creature = g_map.getCreatureById(creatureId);
     if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseCreatureLight: could not get creature with id {}", creatureId);
+        g_logger.debug("ProtocolGame::parseCreatureLight: could not get creature with id {}", creatureId);
         return;
     }
 
@@ -2501,7 +2501,7 @@ void ProtocolGame::parseCreatureOutfit(const InputMessagePtr& msg) const
 
     const auto& creature = g_map.getCreatureById(creatureId);
     if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseCreatureOutfit: could not get creature with id {}", creatureId);
+        g_logger.debug("ProtocolGame::parseCreatureOutfit: could not get creature with id {}", creatureId);
         return;
     }
 
@@ -2516,7 +2516,7 @@ void ProtocolGame::parseCreatureSpeed(const InputMessagePtr& msg)
 
     const auto& creature = g_map.getCreatureById(creatureId);
     if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseCreatureSpeed: could not get creature with id {}", creatureId);
+        g_logger.debug("ProtocolGame::parseCreatureSpeed: could not get creature with id {}", creatureId);
         return;
     }
 
@@ -2533,7 +2533,7 @@ void ProtocolGame::parseCreatureSkulls(const InputMessagePtr& msg)
 
     const auto& creature = g_map.getCreatureById(creatureId);
     if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseCreatureSkulls: could not get creature with id {}", creatureId);
+        g_logger.debug("ProtocolGame::parseCreatureSkulls: could not get creature with id {}", creatureId);
         return;
     }
 
@@ -2547,7 +2547,7 @@ void ProtocolGame::parseCreatureShields(const InputMessagePtr& msg)
 
     const auto& creature = g_map.getCreatureById(creatureId);
     if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseCreatureShields: could not get creature with id {}", creatureId);
+        g_logger.debug("ProtocolGame::parseCreatureShields: could not get creature with id {}", creatureId);
         return;
     }
 
@@ -2561,7 +2561,7 @@ void ProtocolGame::parseCreatureUnpass(const InputMessagePtr& msg)
 
     const auto& creature = g_map.getCreatureById(creatureId);
     if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseCreatureUnpass: could not get creature with id {}", creatureId);
+        g_logger.debug("ProtocolGame::parseCreatureUnpass: could not get creature with id {}", creatureId);
         return;
     }
 
@@ -3976,7 +3976,7 @@ void ProtocolGame::parseCreaturesMark(const InputMessagePtr& msg)
 
     const auto& creature = g_map.getCreatureById(creatureId);
     if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseTrappers: could not get creature with id {}", creatureId);
+        g_logger.debug("ProtocolGame::parseTrappers: could not get creature with id {}", creatureId);
         return;
     }
 
@@ -3998,7 +3998,7 @@ void ProtocolGame::parseCreatureType(const InputMessagePtr& msg)
 
     const auto& creature = g_map.getCreatureById(creatureId);
     if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseCreatureType: could not get creature with id {}", creatureId);
+        g_logger.debug("ProtocolGame::parseCreatureType: could not get creature with id {}", creatureId);
         return;
     }
 
@@ -7372,7 +7372,7 @@ void ProtocolGame::parseAttachedEffect(const InputMessagePtr& msg)
 
     const auto& creature = g_map.getCreatureById(creatureId);
     if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseAttachedEffect: could not get creature with id {}", creatureId);
+        g_logger.debug("ProtocolGame::parseAttachedEffect: could not get creature with id {}", creatureId);
         return;
     }
 
@@ -7391,7 +7391,7 @@ void ProtocolGame::parseDetachEffect(const InputMessagePtr& msg)
 
     const auto& creature = g_map.getCreatureById(creatureId);
     if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseDetachEffect: could not get creature with id {}", creatureId);
+        g_logger.debug("ProtocolGame::parseDetachEffect: could not get creature with id {}", creatureId);
         return;
     }
 
@@ -7405,7 +7405,7 @@ void ProtocolGame::parseCreatureShader(const InputMessagePtr& msg)
 
     const auto& creature = g_map.getCreatureById(creatureId);
     if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseCreatureShader: could not get creature with id {}", creatureId);
+        g_logger.debug("ProtocolGame::parseCreatureShader: could not get creature with id {}", creatureId);
         return;
     }
 
@@ -7429,7 +7429,7 @@ void ProtocolGame::parseCreatureTyping(const InputMessagePtr& msg)
 
     const auto& creature = g_map.getCreatureById(creatureId);
     if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseCreatureTyping: could not get creature with id {}", creatureId);
+        g_logger.debug("ProtocolGame::parseCreatureTyping: could not get creature with id {}", creatureId);
         return;
     }
 
