@@ -425,7 +425,7 @@ void BitmapFont::calculateGlyphsWidthsAutomatically(const ImagePtr& image, const
         if (glyphCoords.left() < 0 || glyphCoords.top() < 0 ||
             glyphCoords.right() >= imageSize.width() || glyphCoords.bottom() >= imageSize.height()) {
             if (!warnedAboutAtlasBounds) {
-                g_logger.warning(stdext::format("Unable to calculate bitmap font glyph %d width: glyph rectangle is outside the image", glyph));
+                g_logger.warning("Unable to calculate bitmap font glyph {} width: glyph rectangle is outside the image", glyph);
                 warnedAboutAtlasBounds = true;
             }
             continue;
